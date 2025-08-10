@@ -60,7 +60,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      setAvatarUrl(user.photoURL ?? (userProfile?.photoUrl ?? null));
+      // Prioritize Firestore photoUrl, then auth, then null
+      setAvatarUrl(userProfile?.photoUrl ?? (user?.photoURL ?? null));
       profileForm.reset({ 
         name: user.displayName || (userProfile?.name || ''), 
         email: user.email || (userProfile?.email || '') 
@@ -71,12 +72,36 @@ export default function SettingsPage() {
   const updateAuthAndDbProfile = async (updates: { displayName?: string, photoURL?: string }) => {
     if (!auth.currentUser) throw new Error("No authenticated user found.");
     
-    await updateProfile(auth.currentUser, updates);
+    // Prepare updates for Auth and DB
+    const authUpdates: { displayName?: string, photoURL?: string | null } = {};
+    const dbUpdates: { name?: string, photoUrl?: string } = {};
+
+    if (updates.displayName) {
+        authUpdates.displayName = updates.displayName;
+        dbUpdates.name = updates.displayName;
+    }
+
+    if (updates.photoURL) {
+        // If it's a data URL, it's too long for Firebase Auth. Only save to Firestore.
+        if (updates.photoURL.startsWith('data:')) {
+            dbUpdates.photoUrl = updates.photoURL;
+            // To prevent issues, we can clear the auth one if it exists
+            if(auth.currentUser.photoURL) {
+                authUpdates.photoURL = null;
+            }
+        } else {
+            // It's a regular URL, safe for both.
+            authUpdates.photoURL = updates.photoURL;
+            dbUpdates.photoUrl = updates.photoURL;
+        }
+    }
+
+    // Update Firebase Auth profile (only if there are changes)
+    if (Object.keys(authUpdates).length > 0) {
+        await updateProfile(auth.currentUser, authUpdates);
+    }
     
-    const dbUpdates: Partial<{name: string, photoUrl: string}> = {};
-    if (updates.displayName) dbUpdates.name = updates.displayName;
-    if (updates.photoURL) dbUpdates.photoUrl = updates.photoURL;
-    
+    // Update Firestore user profile
     if (Object.keys(dbUpdates).length > 0) {
       await updateUser(auth.currentUser.uid, dbUpdates);
     }
@@ -90,7 +115,6 @@ export default function SettingsPage() {
     if (file) {
       startAvatarTransition(async () => {
         try {
-          // This simulates uploading to a storage service and getting a URL.
           const reader = new FileReader();
           reader.onloadend = async () => {
             const dataUrl = reader.result as string;
@@ -352,6 +376,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
-    

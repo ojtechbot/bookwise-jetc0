@@ -83,7 +83,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar>
-                    <AvatarImage src={user.photoURL ?? userProfile?.photoUrl ?? undefined} alt={user.displayName ?? "User Avatar"} />
+                    <AvatarImage src={userProfile?.photoUrl ?? user.photoURL ?? undefined} alt={user.displayName ?? "User Avatar"} />
                     <AvatarFallback>
                       <User />
                     </AvatarFallback>
@@ -133,5 +133,3 @@ export function Header() {
     </header>
   );
 }
-
-    
