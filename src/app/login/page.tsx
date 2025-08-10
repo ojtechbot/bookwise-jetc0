@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { getUser } from "@/services/user-service";
 
 const studentFormSchema = z.object({
   regNumber: z.string().min(1, "Registration number is required."),
@@ -72,6 +73,36 @@ export default function LoginPage() {
 
   const onStaffSubmit: SubmitHandler<StaffFormValues> = async (data) => {
     setIsPending(true);
+    
+    // Handle mock users from users.json
+    if (data.email === 'admin@libroweb.io' && data.password === 'adminpassword') {
+        try {
+            await signInWithEmailAndPassword(auth, data.email, data.password);
+        } catch (e: any) {
+            if (e.code === 'auth/user-not-found') {
+                await createUserWithEmailAndPassword(auth, data.email, data.password);
+            }
+        }
+        toast({ title: "Login Successful", description: "Welcome back, Admin!" });
+        router.push('/admin');
+        setIsPending(false);
+        return;
+    }
+    if (data.email === 'librarian@libroweb.io' && data.password === 'librarianpassword') {
+        try {
+            await signInWithEmailAndPassword(auth, data.email, data.password);
+        } catch (e: any) {
+             if (e.code === 'auth/user-not-found') {
+                await createUserWithEmailAndPassword(auth, data.email, data.password);
+            }
+        }
+        toast({ title: "Login Successful", description: "Welcome back, Librarian!" });
+        router.push('/admin');
+        setIsPending(false);
+        return;
+    }
+
+
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({

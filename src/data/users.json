@@ -1,0 +1,17 @@
+
+[
+  {
+    "uid": "admin-user-placeholder",
+    "name": "Admin User",
+    "email": "admin@libroweb.io",
+    "role": "admin",
+    "regNumber": null
+  },
+  {
+    "uid": "librarian-user-placeholder",
+    "name": "Librarian User",
+    "email": "librarian@libroweb.io",
+    "role": "librarian",
+    "regNumber": null
+  }
+]

@@ -264,7 +264,7 @@ export default function AdminDashboardPage() {
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          <Badge variant={user.role.includes('staff') ? 'default' : 'outline'}>{user.role}</Badge>
+                          <Badge variant={user.role.includes('staff') || user.role.includes('admin') || user.role.includes('librarian') ? 'default' : 'outline'}>{user.role}</Badge>
                         </TableCell>
                         <TableCell>
                             {/* Assuming createdAt is added to user profiles */}
