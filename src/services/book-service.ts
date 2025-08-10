@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, writeBatch, Timestamp, increment, setDoc, query, orderBy, limit, addDoc, updateDoc, deleteDoc, runTransaction, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, writeBatch, Timestamp, increment, setDoc, query, orderBy, limit, addDoc, updateDoc, deleteDoc, runTransaction, where, serverTimestamp } from 'firebase/firestore';
 import initialBooksData from '@/data/books.json';
 
 
@@ -17,16 +17,28 @@ export interface Book {
     coverUrl: string;
     hint?: string;
     createdAt: Timestamp;
+    reviewCount?: number;
+    averageRating?: number;
+}
+
+export interface ReviewData {
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    rating: number;
+    comment: string;
 }
 
 const booksCollection = collection(db, 'books');
 
 // CREATE
-export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availableCopies'>): Promise<string> => {
+export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availableCopies' | 'reviewCount' | 'averageRating'>): Promise<string> => {
     const newBookData = {
         ...bookData,
         availableCopies: bookData.totalCopies,
         createdAt: Timestamp.now(),
+        reviewCount: 0,
+        averageRating: 0,
     };
     const docRef = await addDoc(booksCollection, newBookData);
     // Now update the document with its own ID
@@ -184,6 +196,38 @@ export const returnBook = async (bookId: string, userId: string) => {
     });
 };
 
+export const submitReview = async (bookId: string, review: ReviewData) => {
+  const bookRef = doc(db, 'books', bookId);
+  const reviewRef = doc(collection(bookRef, 'reviews'));
+
+  await runTransaction(db, async (transaction) => {
+    const bookDoc = await transaction.get(bookRef);
+    if (!bookDoc.exists()) {
+      throw new Error("Book not found.");
+    }
+
+    // Add the new review
+    transaction.set(reviewRef, { ...review, createdAt: serverTimestamp() });
+
+    // Update aggregate data on the book
+    const newReviewCount = (bookDoc.data().reviewCount || 0) + 1;
+    const oldRatingTotal = (bookDoc.data().averageRating || 0) * (bookDoc.data().reviewCount || 0);
+    const newAverageRating = (oldRatingTotal + review.rating) / newReviewCount;
+
+    transaction.update(bookRef, {
+      reviewCount: increment(1),
+      averageRating: newAverageRating,
+    });
+  });
+};
+
+export const getReviews = async (bookId: string) => {
+  const reviewsCol = collection(db, 'books', bookId, 'reviews');
+  const q = query(reviewsCol, orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
 
 // Helper to seed database from JSON
 export const seedInitialBooks = async () => {
@@ -192,7 +236,7 @@ export const seedInitialBooks = async () => {
         // Use the `id` from JSON as the document ID in Firestore
         const bookRef = doc(db, 'books', book.id);
         const createdAtTimestamp = book.createdAt ? new Timestamp(book.createdAt.seconds, book.createdAt.nanoseconds) : Timestamp.now();
-        batch.set(bookRef, { ...book, createdAt: createdAtTimestamp });
+        batch.set(bookRef, { ...book, createdAt: createdAtTimestamp, reviewCount: 0, averageRating: 0 });
     });
 
     try {
@@ -202,4 +246,3 @@ export const seedInitialBooks = async () => {
         console.error("Error seeding initial books: ", error);
     }
 };
-

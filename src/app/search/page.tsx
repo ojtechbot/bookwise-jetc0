@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Lightbulb, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBooks, type Book } from "@/services/book-service";
+import { Slider } from "@/components/ui/slider";
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
@@ -20,6 +21,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [author, setAuthor] = useState(searchParams.get('author') || '');
   const [category, setCategory] = useState(searchParams.get('category') || '');
+  const [yearRange, setYearRange] = useState<[number, number]>([1800, new Date().getFullYear()]);
   const [aiReasoning, setAiReasoning] = useState('');
   const [isAiSearchPending, startAiSearchTransition] = useTransition();
 
@@ -32,6 +34,15 @@ export default function SearchPage() {
       try {
         const books = await getBooks();
         setAllBooks(books);
+        const years = books.map(b => b.publishedYear);
+        const minYear = Math.min(...years);
+        const maxYear = Math.max(...years);
+        const startYear = searchParams.get('startYear');
+        const endYear = searchParams.get('endYear');
+        setYearRange([
+            startYear ? parseInt(startYear) : minYear, 
+            endYear ? parseInt(endYear) : maxYear
+        ]);
       } catch (error) {
         console.error("Failed to fetch books:", error);
       } finally {
@@ -56,6 +67,10 @@ export default function SearchPage() {
         if (result.query) params.set('q', result.query);
         if (result.author) params.set('author', result.author);
         if (result.category) params.set('category', result.category);
+        if (result.publicationYear) {
+            params.set('startYear', String(result.publicationYear));
+            params.set('endYear', String(result.publicationYear));
+        }
         
         router.push(`/search?${params.toString()}`);
         setAiReasoning(result.reasoning);
@@ -77,15 +92,25 @@ export default function SearchPage() {
     router.push(`/search?${params.toString()}`);
   }
 
+  const handleYearRangeCommit = (newRange: [number, number]) => {
+     const params = new URLSearchParams(searchParams.toString());
+     params.set('startYear', String(newRange[0]));
+     params.set('endYear', String(newRange[1]));
+     router.push(`/search?${params.toString()}`);
+  }
+
   const filteredResults = useMemo(() => {
+    const startYear = Number(searchParams.get('startYear') || yearRange[0]);
+    const endYear = Number(searchParams.get('endYear') || yearRange[1]);
     return allBooks.filter(book => {
       const queryLower = query.toLowerCase();
       const matchesQuery = query ? book.title.toLowerCase().includes(queryLower) || book.author.toLowerCase().includes(queryLower) : true;
       const matchesAuthor = author ? book.author === author : true;
       const matchesCategory = category ? book.category === category : true;
-      return matchesQuery && matchesAuthor && matchesCategory;
+      const matchesYear = book.publishedYear >= startYear && book.publishedYear <= endYear;
+      return matchesQuery && matchesAuthor && matchesCategory && matchesYear;
     });
-  }, [allBooks, query, author, category]);
+  }, [allBooks, query, author, category, searchParams, yearRange]);
 
   const uniqueAuthors = useMemo(() => [...new Set(allBooks.map(book => book.author))].sort(), [allBooks]);
   const uniqueCategories = useMemo(() => [...new Set(allBooks.map(book => book.category))].sort(), [allBooks]);
@@ -115,8 +140,8 @@ export default function SearchPage() {
             </AlertDescription>
           </Alert>
         )}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+          <div>
             <Label htmlFor="author-filter">Author</Label>
             <Select value={author} onValueChange={(value) => updateQueryParam('author', value === 'all' ? '' : value)}>
               <SelectTrigger id="author-filter">
@@ -128,7 +153,7 @@ export default function SearchPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex-1">
+          <div>
             <Label htmlFor="category-filter">Category</Label>
             <Select value={category} onValueChange={(value) => updateQueryParam('category', value === 'all' ? '' : value)}>
               <SelectTrigger id="category-filter">
@@ -140,11 +165,28 @@ export default function SearchPage() {
               </SelectContent>
             </Select>
           </div>
-           <div className="flex items-end">
-            <Button variant="outline" onClick={() => router.push('/search')} className="w-full sm:w-auto">
+          <div className="lg:col-span-1">
+             <Button variant="outline" onClick={() => router.push('/search')} className="w-full">
               Clear Filters
             </Button>
           </div>
+           <div className="md:col-span-2 lg:col-span-3 space-y-2">
+                <Label>Publication Year</Label>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{yearRange[0]}</span>
+                    <span>{yearRange[1]}</span>
+                </div>
+                <Slider
+                    value={yearRange}
+                    onValueChange={setYearRange}
+                    onValueCommit={handleYearRangeCommit}
+                    min={1800}
+                    max={new Date().getFullYear()}
+                    step={1}
+                    className="w-full"
+                    disabled={isLoading}
+                />
+            </div>
         </div>
       </div>
 

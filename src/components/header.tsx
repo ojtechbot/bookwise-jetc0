@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { BookMarked, LogIn, UserPlus, Menu, User, LogOut } from "lucide-react";
+import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -12,6 +12,23 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
+import { useTheme } from "next-themes";
+
+function ThemeSwitcher() {
+    const { setTheme, theme } = useTheme();
+    return (
+        <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        >
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+        </Button>
+    )
+}
+
 
 export function Header() {
   const router = useRouter();
@@ -78,6 +95,7 @@ export function Header() {
            {isLoggedIn && !isStudent && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
         </nav>
         <div className="flex items-center gap-4 ml-auto">
+          <ThemeSwitcher />
           {isLoading ? null : isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -3,16 +3,18 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Download, BookOpen, Lightbulb, Loader2, History } from 'lucide-react';
+import { Download, BookOpen, Lightbulb, Loader2, History, Star, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useState, useTransition, useEffect } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
-import { getBook, borrowBook, returnBook, type Book } from '@/services/book-service';
+import { getBook, borrowBook, returnBook, type Book, submitReview, getReviews } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { ReviewForm } from '@/components/review-form';
+import { ReviewList, type Review } from '@/components/review-list';
 
 export default function BookDetailsPage({ params }: { params: { id: string } }) {
   const [book, setBook] = useState<Book | null>(null);
@@ -21,14 +23,18 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   const [isSummaryPending, startSummaryTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [aiSummary, setAiSummary] = useState('');
+  const [reviews, setReviews] = useState<Review[]>([]);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchBook = async () => {
+  const fetchBookAndReviews = async () => {
       setIsLoading(true);
       try {
-        const bookData = await getBook(params.id);
+        const [bookData, reviewsData] = await Promise.all([
+          getBook(params.id),
+          getReviews(params.id)
+        ]);
         setBook(bookData);
+        setReviews(reviewsData);
       } catch (error) {
         console.error("Failed to fetch book data:", error);
         setBook(null);
@@ -36,7 +42,9 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
         setIsLoading(false);
       }
     };
-    fetchBook();
+
+  useEffect(() => {
+    fetchBookAndReviews();
   }, [params.id]);
   
   const handleGenerateSummary = () => {
@@ -84,6 +92,31 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     });
   };
 
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!book || !user || !userProfile) return false;
+    try {
+      await submitReview(book.id, {
+        userId: user.uid,
+        userName: userProfile.name || "Anonymous",
+        userAvatar: userProfile.photoUrl || "",
+        rating,
+        comment,
+      });
+      toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
+      // Refresh reviews
+      const reviewsData = await getReviews(params.id);
+      setReviews(reviewsData);
+      // Refresh book data to get new average rating
+      const bookData = await getBook(params.id);
+      setBook(bookData);
+      return true;
+    } catch (error: any) {
+      console.error("Failed to submit review:", error);
+      toast({ title: 'Error', description: "Could not submit your review. Please try again.", variant: 'destructive' });
+      return false;
+    }
+  }
+
   if (isLoading || isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
@@ -105,6 +138,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   
   const isBorrowedByUser = userProfile?.borrowedBooks?.some(b => b.bookId === book.id && b.status === 'borrowed');
   const isAvailable = book.availableCopies > 0;
+  const hasUserReviewed = user ? reviews.some(r => r.userId === user.uid) : false;
 
   return (
     <div className="container mx-auto py-12 px-4 md:px-6">
@@ -125,6 +159,14 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
           <Badge variant="secondary" className="mb-2">{book.category}</Badge>
           <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary">{book.title}</h1>
           <p className="mt-2 text-xl text-muted-foreground">by {book.author}</p>
+            <div className="flex items-center gap-2 mt-4">
+                <div className="flex items-center gap-1 text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={i < (book.averageRating || 0) ? 'fill-current' : 'text-muted-foreground'} />
+                    ))}
+                </div>
+                <span className="text-muted-foreground text-sm">({book.reviewCount || 0} reviews)</span>
+            </div>
           <div className="mt-6 flex flex-col sm:flex-row gap-4">
              {isBorrowedByUser ? (
                  <Button size="lg" className="w-full sm:w-auto" onClick={handleReturn} disabled={isActionPending}>
@@ -182,6 +224,19 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
                 <div><span className="font-semibold">Published:</span> {book.publishedYear}</div>
                 <div><span className="font-semibold">Available Copies:</span> {book.availableCopies}/{book.totalCopies}</div>
             </div>
+          </div>
+          <Separator className="my-8" />
+           <div>
+            <h2 className="text-2xl font-bold font-headline flex items-center gap-2"><MessageSquare /> Reviews</h2>
+            {user && !hasUserReviewed && (
+              <Card className="my-6">
+                <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-2">Write a review</h3>
+                    <ReviewForm onSubmit={handleReviewSubmit} />
+                </CardContent>
+              </Card>
+            )}
+            <ReviewList reviews={reviews} />
           </div>
         </div>
       </div>

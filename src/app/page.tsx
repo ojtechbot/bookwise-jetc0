@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Book, Library, Search, Tag, Loader2, Sparkles } from "lucide-react";
+import { Book, Library, Search, Tag, Loader2, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { getBooks, getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
 import { Timestamp } from "firebase/firestore";
+import Image from "next/image";
 
 
 const categories = [
@@ -88,8 +89,13 @@ export default function Home() {
   }, [allBooks]);
   
   const popularBooks = useMemo(() => {
-    return [...allBooks].sort((a,b) => b.totalCopies - a.totalCopies).slice(0, 4);
+    return [...allBooks].sort((a,b) => (b.reviewCount || 0) - (a.reviewCount || 0)).slice(0, 4);
   }, [allBooks])
+
+  const featuredBook = useMemo(() => {
+    if (allBooks.length === 0) return null;
+    return allBooks.reduce((prev, current) => (prev.averageRating || 0) > (current.averageRating || 0) ? prev : current);
+  }, [allBooks]);
   
   const recommendedBookDetails = useMemo(() => {
      if(!recommendations.length) return [];
@@ -124,6 +130,42 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {featuredBook && (
+         <section className="w-full py-16 md:py-24">
+            <div className="container mx-auto px-4 md:px-6">
+                <h2 className="text-3xl font-bold text-center text-primary">Featured Book</h2>
+                <p className="text-center mt-2 mb-8 text-foreground/70">Our top-rated pick for you this week.</p>
+                <Card className="overflow-hidden md:grid md:grid-cols-2 md:gap-8 items-center">
+                    <Image
+                        src={featuredBook.coverUrl}
+                        alt={`Cover of ${featuredBook.title}`}
+                        width={600}
+                        height={900}
+                        className="w-full h-auto object-cover"
+                        data-ai-hint={featuredBook.hint}
+                    />
+                    <div className="p-8">
+                        <Badge variant="secondary">{featuredBook.category}</Badge>
+                        <h3 className="text-3xl font-bold mt-2 font-headline">{featuredBook.title}</h3>
+                        <p className="text-lg text-muted-foreground mt-1">by {featuredBook.author}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-1 text-amber-500">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={i < (featuredBook.averageRating || 0) ? 'fill-current' : 'text-muted-foreground'} />
+                                ))}
+                            </div>
+                             <span className="text-muted-foreground text-sm">({featuredBook.reviewCount || 0} reviews)</span>
+                        </div>
+                        <p className="mt-4 text-base text-foreground/80 leading-relaxed line-clamp-4">{featuredBook.summary}</p>
+                        <Button asChild size="lg" className="mt-6">
+                            <Link href={`/book/${featuredBook.id}`}>Learn More</Link>
+                        </Button>
+                    </div>
+                </Card>
+            </div>
+         </section>
+      )}
       
        {userProfile && userProfile.role === 'student' && (
         <section className="w-full py-16 md:py-24">
