@@ -19,6 +19,7 @@ import { getUsers, UserProfile } from '@/services/user-service';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { EditUserDialog } from '@/components/edit-user-dialog';
 
 const chartData = [
     { month: 'January', borrows: 186, signups: 80 },
@@ -85,7 +86,7 @@ export default function AdminDashboardPage() {
   const handleArchiveRequest = (id: string) => {
     startArchiveTransition(async () => {
         try {
-            await archiveBookRequest(id);
+            await archiveBookRequest(id!);
             toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
             setRequests(prev => prev.filter(r => r.id !== id));
         } catch (error) {
@@ -286,21 +287,27 @@ export default function AdminDashboardPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>Email / Reg No.</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.uid}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
+                    {users.map((u) => (
+                      <TableRow key={u.uid}>
+                        <TableCell className="font-medium">{u.name}</TableCell>
+                        <TableCell>{u.role === 'student' ? u.regNumber : u.email}</TableCell>
                         <TableCell>
-                          <Badge variant={user.role.includes('staff') || user.role.includes('admin') || user.role.includes('librarian') ? 'default' : 'outline'}>{user.role}</Badge>
+                          <Badge variant={u.role.includes('staff') || u.role.includes('admin') || u.role.includes('librarian') ? 'default' : 'outline'} className="capitalize">{u.role}</Badge>
                         </TableCell>
                         <TableCell>
-                            {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                            {u.createdAt ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <EditUserDialog user={u} onUserUpdated={fetchData}>
+                            <Button variant="outline" size="sm" disabled={user?.uid === u.uid}>Edit</Button>
+                          </EditUserDialog>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -364,5 +371,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    

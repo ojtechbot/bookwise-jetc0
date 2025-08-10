@@ -5,6 +5,8 @@ import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDoc, updateDoc, Timestamp, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
 
 
+export type UserRole = 'student' | 'staff' | 'admin' | 'librarian';
+
 export interface BorrowedBook {
     bookId: string;
     borrowedDate: Timestamp;
@@ -17,7 +19,7 @@ export interface UserProfile {
     uid: string;
     name: string;
     email: string;
-    role: 'student' | 'staff' | 'admin' | 'librarian';
+    role: UserRole;
     regNumber: string | null;
     borrowedBooks?: BorrowedBook[];
     createdAt?: Timestamp;
@@ -58,4 +60,11 @@ export const getUsers = async (): Promise<UserProfile[]> => {
 export const updateUser = async (uid: string, data: Partial<UserProfile>) => {
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, data);
+};
+
+
+// UPDATE a user's role
+export const updateUserRole = async (uid: string, role: UserRole) => {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, { role });
 };
