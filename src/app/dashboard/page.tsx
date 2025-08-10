@@ -13,9 +13,12 @@ import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { requestBook } from '@/ai/flows/request-book-flow';
 import { useToast } from '@/hooks/use-toast';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 const borrowedBooks = [
   { id: '1', title: 'The Midnight Library', author: 'Matt Haig', dueDate: '2024-08-15' },
@@ -34,8 +37,26 @@ const requestFormSchema = z.object({
 
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        // Mock user for student dashboard, in real app you'd redirect
+        // For this example, we'll allow access but you can enforce login
+        // by uncommenting the line below.
+        // router.push('/login'); 
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const form = useForm<z.infer<typeof requestFormSchema>>({
     resolver: zodResolver(requestFormSchema),
@@ -72,6 +93,15 @@ export default function DashboardPage() {
       }
     });
   }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
