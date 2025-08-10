@@ -1,7 +1,7 @@
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, writeBatch, Timestamp, increment } from 'firebase/firestore';
-import booksData from '@/data/books.json';
+import { collection, doc, getDoc, getDocs, writeBatch, Timestamp, increment, setDoc, query, orderBy, limit, addDoc, updateDoc, deleteDoc, runTransaction, where } from 'firebase/firestore';
+import initialBooksData from '@/data/books.json';
 
 
 export interface Book {
@@ -16,149 +16,190 @@ export interface Book {
     availableCopies: number;
     coverUrl: string;
     hint?: string;
-    createdAt?: { seconds: number; nanoseconds: number };
+    createdAt: Timestamp;
 }
 
-let books: Book[] = booksData as Book[];
+const booksCollection = collection(db, 'books');
 
-// CREATE (Simulated)
-export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availableCopies'>) => {
-    const newBook: Book = {
+// CREATE
+export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availableCopies'>): Promise<string> => {
+    const newBookData = {
         ...bookData,
-        id: `new-${Math.random().toString(36).substr(2, 9)}`, // Generate a temporary ID
         availableCopies: bookData.totalCopies,
-        createdAt: {
-            seconds: Math.floor(Date.now() / 1000),
-            nanoseconds: 0
-        },
+        createdAt: Timestamp.now(),
     };
-    books.push(newBook);
-    console.log("Simulated: Added book", newBook);
-    return newBook.id;
+    const docRef = await addDoc(booksCollection, newBookData);
+    // Now update the document with its own ID
+    await updateDoc(docRef, { id: docRef.id });
+    return docRef.id;
 };
 
-// READ
-export const getBooks = async (): Promise<Book[]> => {
-    // Return a copy to prevent direct mutation of the in-memory array
-    return JSON.parse(JSON.stringify(books));
+// READ ALL
+export const getBooks = async (sortBy: string = 'createdAt', order: 'desc' | 'asc' = 'desc'): Promise<Book[]> => {
+    let q = query(booksCollection, orderBy(sortBy, order));
+
+    // Handle popularity sort (mock for now)
+    if (sortBy === 'popularity') {
+       q = query(booksCollection, orderBy('totalCopies', 'desc'));
+    }
+
+    const snapshot = await getDocs(q);
+    
+    // If the database is empty, seed it with initial data
+    if (snapshot.empty) {
+        console.log("No books found in Firestore, seeding initial data...");
+        await seedInitialBooks();
+        // Fetch again after seeding
+        const seededSnapshot = await getDocs(q);
+        return seededSnapshot.docs.map(doc => doc.data() as Book);
+    }
+
+    return snapshot.docs.map(doc => doc.data() as Book);
 };
 
 // READ ONE
 export const getBook = async (id: string): Promise<Book | null> => {
-    const book = books.find(b => b.id === id);
-    if (book) {
-        // Return a copy
-        return JSON.parse(JSON.stringify(book));
+    // Firestore's getDoc requires the actual document ID, not a field value
+    // If your `id` field is the same as the Firestore document ID, this is fine.
+    // If not, you need to query.
+    const docRef = doc(db, 'books', id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        return docSnap.data() as Book;
+    } 
+
+    // Fallback query if the id is a custom field and not the document ID
+    const q = query(collection(db, "books"), where("id", "==", id));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as Book;
     }
+    
     return null;
 };
 
-// UPDATE (Simulated)
-export const updateBook = async (id: string, data: Partial<Omit<Book, 'id'>>) => {
-    const bookIndex = books.findIndex(b => b.id === id);
-    if (bookIndex === -1) {
-        throw new Error("Book not found for update.");
-    }
-    const oldBook = books[bookIndex];
+// UPDATE
+export const updateBook = async (id: string, data: Partial<Omit<Book, 'id' | 'availableCopies'>>) => {
+    const bookRef = doc(db, "books", id);
 
-    // Recalculate available copies if total copies changes
-    const oldTotal = oldBook.totalCopies;
-    const oldAvailable = oldBook.availableCopies;
-    const copyDiff = data.totalCopies !== undefined ? data.totalCopies - oldTotal : 0;
-    const newAvailable = oldAvailable + copyDiff;
-    
-    if (newAvailable < 0) {
-        throw new Error("Cannot reduce total copies below the number of borrowed books.");
-    }
+    await runTransaction(db, async (transaction) => {
+        const bookDoc = await transaction.get(bookRef);
+        if (!bookDoc.exists()) {
+            throw "Document does not exist!";
+        }
 
-    const updateData: Partial<Book> = { ...data };
-    if (copyDiff !== 0) {
-        updateData.availableCopies = newAvailable;
-    }
-    
-    books[bookIndex] = { ...oldBook, ...updateData };
-    console.log("Simulated: Updated book", books[bookIndex]);
+        const oldTotal = bookDoc.data().totalCopies;
+        const oldAvailable = bookDoc.data().availableCopies;
+        const copyDiff = data.totalCopies !== undefined ? data.totalCopies - oldTotal : 0;
+        const newAvailable = oldAvailable + copyDiff;
+
+        if (newAvailable < 0) {
+            throw new Error("Cannot reduce total copies below the number of borrowed books.");
+        }
+        
+        const updateData: any = { ...data };
+        if (copyDiff !== 0) {
+             updateData.availableCopies = newAvailable;
+        }
+
+        transaction.update(bookRef, updateData);
+    });
 };
 
 
-// DELETE (Simulated)
+// DELETE
 export const deleteBook = async (id: string) => {
-    books = books.filter(b => b.id !== id);
-    console.log("Simulated: Deleted book with id", id);
+    const bookRef = doc(db, "books", id);
+    await deleteDoc(bookRef);
 };
 
-// Borrow a book (Simulated + Firestore for user data)
+
+// Borrow a book
 export const borrowBook = async (bookId: string, userId: string) => {
-    const bookIndex = books.findIndex(b => b.id === bookId);
-    if (bookIndex === -1) {
-        throw new Error("This book is currently unavailable.");
-    }
-    if (books[bookIndex].availableCopies < 1) {
-        throw new Error("This book is currently unavailable.");
-    }
-
-    // Still need to interact with Firestore for user profile
+    const bookRef = doc(db, "books", bookId);
     const userRef = doc(db, "users", userId);
-    const batch = writeBatch(db);
 
-    const userDoc = await getDoc(userRef);
-    if (!userDoc.exists()) {
-        throw new Error("User not found.");
-    }
+    await runTransaction(db, async (transaction) => {
+        const bookDoc = await transaction.get(bookRef);
+        const userDoc = await transaction.get(userRef);
 
-    const borrowedBooks = userDoc.data().borrowedBooks || [];
-    if (borrowedBooks.some((b: any) => b.bookId === bookId && b.status === 'borrowed')) {
-        throw new Error("You have already borrowed this book.");
-    }
+        if (!bookDoc.exists() || bookDoc.data().availableCopies < 1) {
+            throw new Error("This book is currently unavailable.");
+        }
+        if (!userDoc.exists()) {
+            throw new Error("User not found.");
+        }
+        
+        const borrowedBooks = userDoc.data().borrowedBooks || [];
+        if (borrowedBooks.some((b: any) => b.bookId === bookId && b.status === 'borrowed')) {
+            throw new Error("You have already borrowed this book.");
+        }
 
-    // Decrement available copies in memory
-    books[bookIndex].availableCopies--;
+        // Decrement available copies
+        transaction.update(bookRef, { availableCopies: increment(-1) });
 
-    // Add to user's borrowed books list in Firestore
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14); // 2-week borrowing period
-    const newBorrowedList = [
-        ...borrowedBooks,
-        { bookId, borrowedDate: Timestamp.now(), dueDate: Timestamp.fromDate(dueDate), status: 'borrowed' }
-    ];
-    batch.update(userRef, { borrowedBooks: newBorrowedList });
-
-    await batch.commit();
-    console.log(`Simulated: Borrowed book ${bookId} for user ${userId}. New available copies: ${books[bookIndex].availableCopies}`);
+        // Add to user's borrowed books list
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 14); // 2-week borrowing period
+        const newBorrowedList = [
+            ...borrowedBooks,
+            { bookId, borrowedDate: Timestamp.now(), dueDate: Timestamp.fromDate(dueDate), status: 'borrowed' }
+        ];
+        transaction.update(userRef, { borrowedBooks: newBorrowedList });
+    });
 };
 
 
-// Return a book (Simulated + Firestore for user data)
+// Return a book
 export const returnBook = async (bookId: string, userId: string) => {
-    const bookIndex = books.findIndex(b => b.id === bookId);
-    if (bookIndex === -1) {
-        throw new Error("Book not found.");
-    }
-
-    // Still need to interact with Firestore for user profile
+    const bookRef = doc(db, "books", bookId);
     const userRef = doc(db, "users", userId);
-    const batch = writeBatch(db);
+    
+    await runTransaction(db, async (transaction) => {
+        const bookDoc = await transaction.get(bookRef);
+        const userDoc = await transaction.get(userRef);
 
-    const userDoc = await getDoc(userRef);
-    if (!userDoc.exists()) {
-        throw new Error("User not found.");
-    }
+        if (!bookDoc.exists()) {
+            throw new Error("Book not found.");
+        }
+        if (!userDoc.exists()) {
+            throw new Error("User not found.");
+        }
 
-    const borrowedBooks = userDoc.data().borrowedBooks || [];
-    const bookToReturnIndex = borrowedBooks.findIndex((b: any) => b.bookId === bookId && b.status === 'borrowed');
+        const borrowedBooks = userDoc.data().borrowedBooks || [];
+        const bookToReturnIndex = borrowedBooks.findIndex((b: any) => b.bookId === bookId && b.status === 'borrowed');
 
-    if (bookToReturnIndex === -1) {
-        throw new Error("You have not borrowed this book or it has already been returned.");
-    }
+        if (bookToReturnIndex === -1) {
+            throw new Error("You have not borrowed this book or it has already been returned.");
+        }
 
-    // Increment available copies in memory
-    books[bookIndex].availableCopies++;
+        // Increment available copies
+        transaction.update(bookRef, { availableCopies: increment(1) });
 
-    // Update the book's status in the user's list
-    borrowedBooks[bookToReturnIndex].status = 'returned';
-    borrowedBooks[bookToReturnIndex].returnedDate = Timestamp.now();
-    batch.update(userRef, { borrowedBooks });
-
-    await batch.commit();
-    console.log(`Simulated: Returned book ${bookId} for user ${userId}. New available copies: ${books[bookIndex].availableCopies}`);
+        // Update the book's status in the user's list
+        borrowedBooks[bookToReturnIndex].status = 'returned';
+        borrowedBooks[bookToReturnIndex].returnedDate = Timestamp.now();
+        transaction.update(userRef, { borrowedBooks });
+    });
 };
+
+
+// Helper to seed database from JSON
+export const seedInitialBooks = async () => {
+    const batch = writeBatch(db);
+    initialBooksData.forEach((book) => {
+        // Use the `id` from JSON as the document ID in Firestore
+        const bookRef = doc(db, 'books', book.id);
+        const createdAtTimestamp = book.createdAt ? new Timestamp(book.createdAt.seconds, book.createdAt.nanoseconds) : Timestamp.now();
+        batch.set(bookRef, { ...book, createdAt: createdAtTimestamp });
+    });
+
+    try {
+        await batch.commit();
+        console.log("Initial books have been seeded successfully.");
+    } catch (error) {
+        console.error("Error seeding initial books: ", error);
+    }
+};
+

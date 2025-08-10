@@ -11,6 +11,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { getBooks, getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
+import { Timestamp } from "firebase/firestore";
 
 
 const categories = [
@@ -53,20 +54,21 @@ export default function Home() {
     try {
       const history = await Promise.all(
         userProfile.borrowedBooks
-          .filter(b => b.status === 'returned')
           .map(async (b) => {
             const bookInfo = await getBook(b.bookId);
-            return {
-              title: bookInfo?.title || 'Unknown',
-              author: bookInfo?.author || 'Unknown',
-              category: bookInfo?.category || 'Unknown',
-            };
+            return bookInfo ? {
+              title: bookInfo.title,
+              author: bookInfo.author,
+              category: bookInfo.category,
+            } : null;
           })
       );
       
-      if(history.length > 0) {
+      const validHistory = history.filter((item): item is {title: string, author: string, category: string} => item !== null);
+      
+      if(validHistory.length > 0) {
         const result = await recommendBooks({
-          history: history.map(({ title, author, category }) => ({ title, author, category })),
+          history: validHistory,
           allBooks: allBooks.map(({ title, author, category }) => ({ title, author, category }))
         });
         setRecommendations(result.recommendations);
@@ -80,11 +82,12 @@ export default function Home() {
   }, [userProfile, allBooks]);
   
   const latestBooks = useMemo(() => {
-      return [...allBooks].sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)).slice(0, 4);
+      return [...allBooks]
+      .sort((a, b) => (b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0) - (a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0))
+      .slice(0, 4);
   }, [allBooks]);
   
   const popularBooks = useMemo(() => {
-    // Note: Popularity is just based on total copies in this mock data
     return [...allBooks].sort((a,b) => b.totalCopies - a.totalCopies).slice(0, 4);
   }, [allBooks])
   
@@ -130,7 +133,7 @@ export default function Home() {
                     <h2 className="text-3xl font-bold text-primary">Recommended For You</h2>
                     <p className="text-foreground/70">Based on your borrowing history.</p>
                   </div>
-                  <Button onClick={fetchRecommendations} disabled={isRecommendationsLoading}>
+                  <Button onClick={fetchRecommendations} disabled={isRecommendationsLoading || !userProfile.borrowedBooks || userProfile.borrowedBooks.length === 0}>
                     {isRecommendationsLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
                     <span className="ml-2 hidden sm:inline">Get Suggestions</span>
                   </Button>

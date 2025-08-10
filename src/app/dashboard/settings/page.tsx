@@ -46,17 +46,48 @@ export default function SettingsPage() {
       form.reset({ name: userProfile.name || '', email: userProfile.email || '' });
     }
   }, [user, userProfile, form]);
+  
+  const updateAuthAndDbProfile = async (updates: { displayName?: string, photoURL?: string }) => {
+    if (!auth.currentUser) throw new Error("No authenticated user found.");
+    
+    // Update Firebase Auth profile
+    await updateProfile(auth.currentUser, updates);
+    
+    // Update Firestore user profile
+    const dbUpdates: Partial<{name: string, photoUrl: string}> = {};
+    if (updates.displayName) dbUpdates.name = updates.displayName;
+    // Note: We don't typically store photoURL in the Firestore user profile,
+    // as it's efficiently managed by Auth. But if needed, it would be added here.
+    
+    if (Object.keys(dbUpdates).length > 0) {
+      await updateUser(auth.currentUser.uid, dbUpdates);
+    }
+    
+    // Refresh context to reflect changes app-wide
+    await refreshUserProfile();
+  }
+
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
-        // Here you would typically upload the file to a storage service like Firebase Storage
-        // and then update the user's photoURL with the new URL.
-      };
-      reader.readAsDataURL(file);
+      startAvatarTransition(async () => {
+        try {
+          // In a real app, you would upload this file to Firebase Storage
+          // and get a URL back. For this example, we'll use a Data URL.
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const dataUrl = reader.result as string;
+            setAvatarUrl(dataUrl);
+            await updateAuthAndDbProfile({ photoURL: dataUrl });
+            toast({ title: 'Avatar Updated!', description: 'Your new avatar has been set.' });
+          };
+          reader.readAsDataURL(file);
+        } catch (error) {
+           console.error('Failed to upload avatar:', error);
+           toast({ title: 'Avatar Upload Failed', variant: 'destructive' });
+        }
+      });
     }
   };
 
@@ -65,8 +96,8 @@ export default function SettingsPage() {
     startAvatarTransition(async () => {
       try {
         const result = await generateAvatar({ prompt });
-        if (result.imageUrl && auth.currentUser) {
-          await updateProfile(auth.currentUser, { photoURL: result.imageUrl });
+        if (result.imageUrl) {
+          await updateAuthAndDbProfile({ photoURL: result.imageUrl });
           setAvatarUrl(result.imageUrl);
           toast({ title: 'Avatar Updated!', description: 'Your new AI-generated avatar has been set.' });
         }
@@ -78,15 +109,11 @@ export default function SettingsPage() {
   };
 
   const onSubmit = (values: z.infer<typeof profileFormSchema>) => {
-    if (!user) return;
+    if (!user || values.name === userProfile?.name) return;
     startProfileTransition(async () => {
       try {
-        await updateUser(user.uid, { name: values.name });
-        if (auth.currentUser) {
-            await updateProfile(auth.currentUser, { displayName: values.name });
-        }
-        await refreshUserProfile();
-        toast({ title: 'Profile Updated!', description: 'Your changes have been saved successfully.' });
+        await updateAuthAndDbProfile({ displayName: values.name });
+        toast({ title: 'Profile Updated!', description: 'Your name has been saved successfully.' });
       } catch (error) {
         console.error('Failed to update profile:', error);
         toast({ title: 'Update Failed', description: 'Could not save your changes.', variant: 'destructive' });
@@ -125,11 +152,11 @@ export default function SettingsPage() {
                 </Avatar>
               </div>
               <div>
-                <Label htmlFor="picture" className="sr-only">
+                <Label htmlFor="picture-upload" className="sr-only">
                   Upload
                 </Label>
                 <Button asChild variant="outline" className="w-full">
-                  <label htmlFor="picture-upload">
+                  <label htmlFor="picture-upload" className="cursor-pointer">
                     <Upload className="mr-2" /> Upload Photo
                   </label>
                 </Button>
@@ -139,6 +166,7 @@ export default function SettingsPage() {
                   className="hidden"
                   accept="image/*"
                   onChange={handleAvatarUpload}
+                  disabled={isAvatarPending}
                 />
               </div>
               <Separator />
@@ -191,7 +219,7 @@ export default function SettingsPage() {
                       <FormItem>
                         <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} readOnly />
+                          <Input type="email" {...field} readOnly disabled />
                         </FormControl>
                          <FormMessage />
                       </FormItem>
@@ -200,14 +228,14 @@ export default function SettingsPage() {
                   {userProfile?.regNumber && (
                     <div className="space-y-2">
                       <Label htmlFor="reg-number">Registration Number</Label>
-                      <Input id="reg-number" value={userProfile.regNumber} readOnly />
+                      <Input id="reg-number" value={userProfile.regNumber} readOnly disabled />
                     </div>
                   )}
                   <div className="space-y-2">
                     <Label>Role</Label>
-                    <Input value={userProfile?.role} readOnly />
+                    <Input value={userProfile?.role} readOnly disabled />
                   </div>
-                  <Button type="submit" className="w-full md:w-auto" disabled={isProfilePending}>
+                  <Button type="submit" className="w-full md:w-auto" disabled={isProfilePending || !form.formState.isDirty}>
                      {isProfilePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Changes
                   </Button>
