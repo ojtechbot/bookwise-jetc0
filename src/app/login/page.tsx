@@ -78,21 +78,12 @@ export default function LoginPage() {
     try {
         await signInWithEmailAndPassword(auth, data.email, data.password);
         
-        const user = auth.currentUser;
-        if (!user) throw new Error("User authentication failed.");
-        
-        const userProfile = await getUser(user.uid);
-        if (!userProfile) {
-            throw new Error("User profile not found in database.");
-        }
-
         toast({
             title: "Login Successful",
             description: "Welcome back!",
         });
         
-        // Redirect based on role
-        router.push(userProfile.role === 'student' ? '/dashboard' : '/admin');
+        router.push('/admin');
 
     } catch (error: any) {
         console.error("Staff login failed:", error);
