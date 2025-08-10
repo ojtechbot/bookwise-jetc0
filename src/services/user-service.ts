@@ -49,7 +49,9 @@ export const getUser = async (uid: string): Promise<UserProfile | null> => {
     // Seed users if user not found (useful for first-time login of mock users)
     const allUsersSnapshot = await getDocs(usersCollection);
     if (allUsersSnapshot.empty) {
+        console.log('No users found, seeding initial data...');
         await seedInitialUsers();
+        // Try fetching again after seeding
         const seededDocSnap = await getDoc(docRef);
          if (seededDocSnap.exists()) {
             return seededDocSnap.data() as UserProfile;
@@ -62,6 +64,7 @@ export const getUser = async (uid: string): Promise<UserProfile | null> => {
 // READ ALL users
 export const getUsers = async (): Promise<UserProfile[]> => {
     const snapshot = await getDocs(usersCollection);
+    // If the database is empty, seed it with initial data
     if (snapshot.empty) {
         console.log("No users found in Firestore, seeding initial users...");
         await seedInitialUsers();
@@ -81,6 +84,7 @@ export const updateUser = async (uid: string, data: Partial<UserProfile>) => {
 export const seedInitialUsers = async () => {
     const batch = writeBatch(db);
     initialUsers.forEach((user) => {
+        // Use the `uid` from JSON as the document ID in Firestore
         const userRef = doc(db, 'users', user.uid);
         batch.set(userRef, {
             ...user,
@@ -96,5 +100,7 @@ export const seedInitialUsers = async () => {
         console.error("Error seeding initial users: ", error);
     }
 };
+
+    
 
     

@@ -17,12 +17,14 @@ import { useState, useTransition, useEffect, useMemo } from 'react';
 import { requestBook } from '@/ai/flows/request-book-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { type BorrowedBook } from '@/services/user-service';
+import { type BorrowedBook, type UserProfile } from '@/services/user-service';
 import { getBook, type Book as BookType } from '@/services/book-service';
 import { format } from 'date-fns';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 
 type PopulatedBorrowedBook = BorrowedBook & {
@@ -40,7 +42,7 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, userProfile, isStudent, isLoading } = useAuth();
+  const { user, isStudent, isLoading: isAuthLoading } = useAuth();
   const [borrowedBooks, setBorrowedBooks] = useState<PopulatedBorrowedBook[]>([]);
   const [historyBooks, setHistoryBooks] = useState<PopulatedBorrowedBook[]>([]);
   const [isBookDataLoading, setIsBookDataLoading] = useState(true);
@@ -48,23 +50,31 @@ export default function DashboardPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isAuthLoading) {
       if (!user) {
         router.push('/login');
       } else if (!isStudent) {
         router.push('/admin');
       }
     }
-  }, [user, isStudent, isLoading, router]);
+  }, [user, isStudent, isAuthLoading, router]);
 
   useEffect(() => {
-    const populateBookDetails = async () => {
+    if (!user) return;
+
+    setIsBookDataLoading(true);
+    const userDocRef = doc(db, 'users', user.uid);
+
+    const unsubscribe = onSnapshot(userDocRef, async (doc) => {
+      const userProfile = doc.data() as UserProfile;
+      
       if (!userProfile?.borrowedBooks) {
+        setBorrowedBooks([]);
+        setHistoryBooks([]);
         setIsBookDataLoading(false);
         return;
       }
       
-      setIsBookDataLoading(true);
       try {
         const populatedBooks = await Promise.all(
           userProfile.borrowedBooks.map(async (b) => {
@@ -86,15 +96,10 @@ export default function DashboardPage() {
       } finally {
         setIsBookDataLoading(false);
       }
-    };
+    });
 
-    if (userProfile) {
-      populateBookDetails();
-    } else if (!isLoading) {
-      // If not loading and no profile, no books to load
-      setIsBookDataLoading(false);
-    }
-  }, [userProfile, isLoading]);
+    return () => unsubscribe();
+  }, [user]);
 
   const form = useForm<z.infer<typeof requestFormSchema>>({
     resolver: zodResolver(requestFormSchema),
@@ -142,18 +147,13 @@ export default function DashboardPage() {
   }, [historyBooks]);
   
 
-  if (isLoading || isBookDataLoading) {
+  if (isAuthLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
-
-  if (!user || !userProfile) {
-    return null; // Redirecting...
-  }
-
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -176,6 +176,7 @@ export default function DashboardPage() {
           <TabsTrigger value="stats"><BarChart2 className="mr-2 h-4 w-4" />Stats</TabsTrigger>
           <TabsTrigger value="requests"><HelpCircle className="mr-2 h-4 w-4" />Requests</TabsTrigger>
         </TabsList>
+
         <TabsContent value="borrowed" className="mt-6">
           <Card>
             <CardHeader>
@@ -183,34 +184,36 @@ export default function DashboardPage() {
               <CardDescription>These are the books you have checked out. Please return them by the due date.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead className="hidden sm:table-cell">Author</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {borrowedBooks.length > 0 ? borrowedBooks.map(book => (
-                    <TableRow key={book.bookId}>
-                      <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
-                      <TableCell>{format(book.dueDate.toDate(), 'PPP')}</TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm" className="mr-2"><Link href={`/book/${book.bookId}`}>View Details</Link></Button>
-                      </TableCell>
-                    </TableRow>
-                  )) : (
-                    <TableRow>
-                        <TableCell colSpan={4} className="text-center">You have no borrowed books.</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              </div>
+               {isBookDataLoading ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div> : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead className="hidden sm:table-cell">Author</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {borrowedBooks.length > 0 ? borrowedBooks.map(book => (
+                          <TableRow key={book.bookId}>
+                            <TableCell className="font-medium">{book.title}</TableCell>
+                            <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
+                            <TableCell>{format(book.dueDate.toDate(), 'PPP')}</TableCell>
+                            <TableCell className="text-right">
+                              <Button asChild variant="outline" size="sm" className="mr-2"><Link href={`/book/${book.bookId}`}>View Details</Link></Button>
+                            </TableCell>
+                          </TableRow>
+                        )) : (
+                          <TableRow>
+                              <TableCell colSpan={4} className="text-center h-24">You have no borrowed books.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+               )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -221,34 +224,36 @@ export default function DashboardPage() {
               <CardDescription>A record of all the books you've borrowed in the past.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead className="hidden sm:table-cell">Author</TableHead>
-                    <TableHead>Return Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {historyBooks.length > 0 ? historyBooks.map(book => (
-                    <TableRow key={book.bookId}>
-                      <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
-                      <TableCell>{book.returnedDate ? format(book.returnedDate.toDate(), 'PPP') : 'N/A'}</TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm"><Link href={`/book/${book.bookId}`}>Borrow Again</Link></Button>
-                      </TableCell>
-                    </TableRow>
-                   )) : (
-                    <TableRow>
-                        <TableCell colSpan={4} className="text-center">You have no borrowing history.</TableCell>
-                    </TableRow>
-                   )}
-                </TableBody>
-              </Table>
-              </div>
+              {isBookDataLoading ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin"/></div> : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead className="hidden sm:table-cell">Author</TableHead>
+                          <TableHead>Return Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {historyBooks.length > 0 ? historyBooks.map(book => (
+                          <TableRow key={book.bookId}>
+                            <TableCell className="font-medium">{book.title}</TableCell>
+                            <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
+                            <TableCell>{book.returnedDate ? format(book.returnedDate.toDate(), 'PPP') : 'N/A'}</TableCell>
+                            <TableCell className="text-right">
+                              <Button asChild variant="outline" size="sm"><Link href={`/book/${book.bookId}`}>Borrow Again</Link></Button>
+                            </TableCell>
+                          </TableRow>
+                        )) : (
+                          <TableRow>
+                              <TableCell colSpan={4} className="text-center h-24">You have no borrowing history.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -355,3 +360,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
