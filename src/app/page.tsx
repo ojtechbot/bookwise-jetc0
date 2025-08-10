@@ -83,17 +83,24 @@ export default function Home() {
   }, [userProfile, allBooks]);
   
   const latestBooks = useMemo(() => {
-      return [...allBooks]
-      .sort((a, b) => (b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0) - (a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0))
+    // Sort by createdAt timestamp in descending order and take the first 4
+    return [...allBooks]
+      .sort((a, b) => {
+          const timeA = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
+          return timeB - timeA;
+      })
       .slice(0, 4);
   }, [allBooks]);
   
   const popularBooks = useMemo(() => {
+    // Sort by reviewCount in descending order and take the first 4
     return [...allBooks].sort((a,b) => (b.reviewCount || 0) - (a.reviewCount || 0)).slice(0, 4);
   }, [allBooks])
 
   const featuredBook = useMemo(() => {
     if (allBooks.length === 0) return null;
+    // Find the book with the highest average rating
     return allBooks.reduce((prev, current) => (prev.averageRating || 0) > (current.averageRating || 0) ? prev : current);
   }, [allBooks]);
   
