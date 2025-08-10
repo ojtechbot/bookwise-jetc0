@@ -13,6 +13,7 @@ import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { useTheme } from "next-themes";
+import { Separator } from "./ui/separator";
 
 function ThemeSwitcher() {
     const { setTheme, theme } = useTheme();
@@ -75,6 +76,23 @@ export function Header() {
                   </Link>
                 </SheetTitle>
               </SheetHeader>
+              <div className="py-4">
+                {isLoggedIn && userProfile && (
+                    <div className="px-4 space-y-2 mb-4">
+                        <Avatar className="h-16 w-16">
+                             <AvatarImage src={userProfile?.photoUrl ?? user.photoURL ?? undefined} alt={user.displayName ?? "User Avatar"} />
+                             <AvatarFallback>
+                                <User className="h-8 w-8" />
+                             </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <p className="font-semibold">{userProfile.name}</p>
+                            <p className="text-sm text-muted-foreground">{isStudent ? userProfile.regNumber : userProfile.email}</p>
+                        </div>
+                        <Separator />
+                    </div>
+                )}
+              </div>
               <nav className="grid gap-6 text-lg font-medium p-4">
                 <Link href="/" className="hover:text-primary transition-colors">Home</Link>
                 <Link href="/search" className="hover:text-primary transition-colors">Search</Link>
