@@ -166,7 +166,9 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-center text-primary">
             {userProfile ? 'Popular Books' : 'Latest Additions'}
           </h2>
-          <p className="text-center mt-2 mb-8 text-foreground/70">Check out the top books in our collection.</p>
+          <p className="text-center mt-2 mb-8 text-foreground/70">
+            {userProfile ? 'Check out the most popular books in our collection.' : 'Check out the newest books added to our collection.'}
+          </p>
           {isLoading ? (
              <div className="flex justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
