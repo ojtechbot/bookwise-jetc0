@@ -69,8 +69,10 @@ export default function RegisterPage() {
       const email = data.role === 'staff'
         ? data.email!
         : `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
+      
+      const password = data.password;
 
-      const userCredential = await createUserWithEmailAndPassword(auth, email, data.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       await updateProfile(user, { displayName: data.fullName });
@@ -218,3 +220,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    
