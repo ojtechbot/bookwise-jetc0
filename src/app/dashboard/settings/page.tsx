@@ -73,7 +73,7 @@ export default function SettingsPage() {
     if (!auth.currentUser) throw new Error("No authenticated user found.");
     
     // Prepare updates for Auth and DB
-    const authUpdates: { displayName?: string, photoURL?: string | null } = {};
+    const authUpdates: { displayName?: string, photoURL?: string } = {};
     const dbUpdates: { name?: string, photoUrl?: string } = {};
 
     if (updates.displayName) {
@@ -82,13 +82,9 @@ export default function SettingsPage() {
     }
 
     if (updates.photoURL) {
-        // If it's a data URL, it's too long for Firebase Auth. Only save to Firestore.
+        // Data URIs are too long for Firebase Auth. Only save to Firestore.
         if (updates.photoURL.startsWith('data:')) {
             dbUpdates.photoUrl = updates.photoURL;
-            // To prevent issues, we can clear the auth one if it exists
-            if(auth.currentUser.photoURL) {
-                authUpdates.photoURL = null;
-            }
         } else {
             // It's a regular URL, safe for both.
             authUpdates.photoURL = updates.photoURL;
