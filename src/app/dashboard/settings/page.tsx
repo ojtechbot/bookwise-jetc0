@@ -7,14 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sparkles, Upload, User, Loader2 } from 'lucide-react';
+import { Sparkles, Upload, User, Loader2, KeyRound } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { generateAvatar } from '@/ai/flows/generate-avatar-flow';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { updateProfile } from "firebase/auth";
+import { updateProfile, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import { useToast } from '@/hooks/use-toast';
 import { updateUser } from '@/services/user-service';
 import { useAuth } from '@/context/auth-context';
@@ -27,17 +27,35 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+const changePinSchema = z.object({
+    currentPin: z.string().min(6, "Your current PIN is required."),
+    newPin: z.string().min(6, "New PIN must be at least 6 characters."),
+    confirmPin: z.string()
+}).refine(data => data.newPin === data.confirmPin, {
+    message: "New PINs do not match.",
+    path: ["confirmPin"],
+});
+
+type ChangePinFormValues = z.infer<typeof changePinSchema>;
+
+
 export default function SettingsPage() {
   const { user, userProfile, isLoading, refreshUserProfile } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState('');
+  const [promptText, setPromptText] = useState('');
   const [isAvatarPending, startAvatarTransition] = useTransition();
   const [isProfilePending, startProfileTransition] = useTransition();
+  const [isPinPending, startPinTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<ProfileFormValues>({
+  const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { name: '', email: '' },
+  });
+
+  const pinForm = useForm<ChangePinFormValues>({
+    resolver: zodResolver(changePinSchema),
+    defaultValues: { currentPin: '', newPin: '', confirmPin: '' },
   });
 
   useEffect(() => {
@@ -45,9 +63,9 @@ export default function SettingsPage() {
       setAvatarUrl(user.photoURL);
     }
     if (userProfile) {
-      form.reset({ name: userProfile.name || '', email: userProfile.email || '' });
+      profileForm.reset({ name: userProfile.name || '', email: userProfile.email || '' });
     }
-  }, [user, userProfile, form]);
+  }, [user, userProfile, profileForm]);
   
   const updateAuthAndDbProfile = async (updates: { displayName?: string, photoURL?: string }) => {
     if (!auth.currentUser) throw new Error("No authenticated user found.");
@@ -58,6 +76,7 @@ export default function SettingsPage() {
     // Update Firestore user profile
     const dbUpdates: Partial<{name: string, photoUrl: string}> = {};
     if (updates.displayName) dbUpdates.name = updates.displayName;
+    if (updates.photoURL) dbUpdates.photoUrl = updates.photoURL;
     
     if (Object.keys(dbUpdates).length > 0) {
       await updateUser(auth.currentUser.uid, dbUpdates);
@@ -91,10 +110,10 @@ export default function SettingsPage() {
   };
 
   const handleGenerateAvatar = () => {
-    if (!prompt || !auth.currentUser) return;
+    if (!promptText || !auth.currentUser) return;
     startAvatarTransition(async () => {
       try {
-        const result = await generateAvatar({ prompt });
+        const result = await generateAvatar({ prompt: promptText });
         if (result.imageUrl) {
           await updateAuthAndDbProfile({ photoURL: result.imageUrl });
           setAvatarUrl(result.imageUrl);
@@ -107,7 +126,7 @@ export default function SettingsPage() {
     });
   };
 
-  const onSubmit = (values: ProfileFormValues) => {
+  const onProfileSubmit = (values: ProfileFormValues) => {
     if (!user || values.name === userProfile?.name) return;
     startProfileTransition(async () => {
       try {
@@ -119,6 +138,29 @@ export default function SettingsPage() {
       }
     });
   };
+
+  const onPinSubmit = (values: ChangePinFormValues) => {
+    if (!user) return;
+    startPinTransition(async () => {
+      try {
+        const credential = EmailAuthProvider.credential(user.email!, values.currentPin);
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, values.newPin);
+        pinForm.reset();
+        toast({ title: 'PIN Updated!', description: 'Your PIN has been changed successfully.' });
+      } catch (error: any) {
+        console.error("Failed to update PIN:", error);
+        let description = "Could not update your PIN. Please try again.";
+        if (error.code === 'auth/wrong-password') {
+            description = "The current PIN you entered is incorrect.";
+        }
+         if (error.code === 'auth/too-many-requests') {
+            description = "Too many attempts. Please try again later.";
+        }
+        toast({ title: 'PIN Update Failed', description, variant: 'destructive' });
+      }
+    })
+  }
   
   if (isLoading) {
     return (
@@ -135,7 +177,7 @@ export default function SettingsPage() {
         <p className="text-lg text-muted-foreground">Manage your account and profile details.</p>
       </header>
       <div className="grid gap-8 md:grid-cols-3">
-        <div className="md:col-span-1">
+        <div className="md:col-span-1 flex flex-col gap-8">
           <Card>
             <CardHeader>
               <CardTitle>Profile Picture</CardTitle>
@@ -143,17 +185,21 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex justify-center">
-                <Avatar className="h-40 w-40 border-4 border-primary/20">
-                  <AvatarImage src={avatarUrl ?? undefined} alt="User Avatar" />
-                  <AvatarFallback>
-                    <User className="h-20 w-20" />
-                  </AvatarFallback>
-                </Avatar>
+                 <div className="relative">
+                    <Avatar className="h-40 w-40 border-4 border-primary/20">
+                    <AvatarImage src={avatarUrl ?? undefined} alt="User Avatar" />
+                    <AvatarFallback>
+                        <User className="h-20 w-20" />
+                    </AvatarFallback>
+                    </Avatar>
+                     {isAvatarPending && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full">
+                            <Loader2 className="h-10 w-10 animate-spin text-white" />
+                        </div>
+                    )}
+                 </div>
               </div>
               <div>
-                <Label htmlFor="picture-upload" className="sr-only">
-                  Upload
-                </Label>
                 <Button asChild variant="outline" className="w-full">
                   <label htmlFor="picture-upload" className="cursor-pointer">
                     <Upload className="mr-2 h-4 w-4" /> Upload Photo
@@ -175,11 +221,11 @@ export default function SettingsPage() {
                   <Input
                     id="ai-prompt"
                     placeholder="e.g., a cartoon astronaut"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
                     disabled={isAvatarPending}
                   />
-                  <Button onClick={handleGenerateAvatar} disabled={isAvatarPending || !prompt}>
+                  <Button onClick={handleGenerateAvatar} disabled={isAvatarPending || !promptText} size="icon">
                     {isAvatarPending ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                     <span className="sr-only">Generate</span>
                   </Button>
@@ -189,30 +235,30 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 flex flex-col gap-8">
           <Card>
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
               <CardDescription>Edit your personal details.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
                   <FormField
-                    control={form.control}
+                    control={profileForm.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} disabled={isProfilePending}/>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
+                   <FormField
+                    control={profileForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -228,13 +274,14 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label htmlFor="reg-number">Registration Number</Label>
                       <Input id="reg-number" value={userProfile.regNumber} readOnly disabled />
+                       <p className="text-xs text-muted-foreground">Registration number cannot be changed. Please contact an admin for assistance.</p>
                     </div>
                   )}
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Input value={userProfile?.role} readOnly disabled className="capitalize"/>
                   </div>
-                  <Button type="submit" className="w-full md:w-auto" disabled={isProfilePending || !form.formState.isDirty}>
+                  <Button type="submit" className="w-full md:w-auto" disabled={isProfilePending || !profileForm.formState.isDirty}>
                      {isProfilePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Changes
                   </Button>
@@ -242,8 +289,68 @@ export default function SettingsPage() {
               </Form>
             </CardContent>
           </Card>
+
+           {userProfile?.role === 'student' && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><KeyRound /> Security</CardTitle>
+                    <CardDescription>Change your student PIN.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...pinForm}>
+                        <form onSubmit={pinForm.handleSubmit(onPinSubmit)} className="space-y-4">
+                            <FormField
+                                control={pinForm.control}
+                                name="currentPin"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Current PIN</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} disabled={isPinPending} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={pinForm.control}
+                                name="newPin"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>New PIN</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} disabled={isPinPending} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={pinForm.control}
+                                name="confirmPin"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Confirm New PIN</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} disabled={isPinPending} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" disabled={isPinPending}>
+                                {isPinPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Change PIN
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+             </Card>
+           )}
         </div>
       </div>
     </div>
   );
 }
+
+    

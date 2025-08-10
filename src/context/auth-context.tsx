@@ -38,7 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUserProfile = useCallback(async () => {
-    await fetchUserProfile(user);
+    if (user) {
+      await fetchUserProfile(user);
+    }
   }, [user, fetchUserProfile]);
 
 
@@ -47,11 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setIsStudent(!!currentUser.email?.endsWith('@student.libroweb.io'));
-        // Fetch profile but don't wait for it to finish loading,
-        // this makes the UI appear faster.
-        fetchUserProfile(currentUser).then(() => {
-          setIsLoading(false);
-        });
+        await fetchUserProfile(currentUser);
+        setIsLoading(false);
       } else {
         setIsStudent(false);
         setUserProfile(null);
@@ -82,3 +81,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    

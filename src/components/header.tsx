@@ -16,7 +16,7 @@ import { useAuth } from "@/context/auth-context";
 export function Header() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isStudent, isLoading } = useAuth();
+  const { user, userProfile, isStudent, isLoading } = useAuth();
   
   const handleLogout = async () => {
     try {
@@ -83,7 +83,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar>
-                    <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? "User Avatar"} />
+                    <AvatarImage src={user.photoURL ?? userProfile?.photoUrl ?? undefined} alt={user.displayName ?? "User Avatar"} />
                     <AvatarFallback>
                       <User />
                     </AvatarFallback>
@@ -95,7 +95,7 @@ export function Header() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user.displayName || (isStudent ? 'Student' : 'Staff')}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {isStudent ? userProfile?.regNumber : user.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -133,3 +133,5 @@ export function Header() {
     </header>
   );
 }
+
+    

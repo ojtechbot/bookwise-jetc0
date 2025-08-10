@@ -21,17 +21,19 @@ export interface UserProfile {
     regNumber: string | null;
     borrowedBooks?: BorrowedBook[];
     createdAt?: Timestamp;
+    photoUrl?: string;
 }
 
 const usersCollection = collection(db, 'users');
 
 // CREATE a new user profile
-export const addUser = async (userData: Omit<UserProfile, 'createdAt'>) => {
+export const addUser = async (userData: Omit<UserProfile, 'createdAt' | 'photoUrl' | 'borrowedBooks'>) => {
     const userRef = doc(usersCollection, userData.uid);
     const dataWithTimestamp = {
         ...userData,
         borrowedBooks: [],
         createdAt: serverTimestamp(),
+        photoUrl: '',
     };
     await setDoc(userRef, dataWithTimestamp, { merge: true });
 };
@@ -43,6 +45,17 @@ export const getUser = async (uid: string): Promise<UserProfile | null> => {
     if (docSnap.exists()) {
         return docSnap.data() as UserProfile;
     }
+    
+    // Seed users if user not found (useful for first-time login of mock users)
+    const allUsersSnapshot = await getDocs(usersCollection);
+    if (allUsersSnapshot.empty) {
+        await seedInitialUsers();
+        const seededDocSnap = await getDoc(docRef);
+         if (seededDocSnap.exists()) {
+            return seededDocSnap.data() as UserProfile;
+        }
+    }
+
     return null;
 };
 
@@ -71,7 +84,9 @@ export const seedInitialUsers = async () => {
         const userRef = doc(db, 'users', user.uid);
         batch.set(userRef, {
             ...user,
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            photoUrl: '',
+            borrowedBooks: []
         });
     });
     try {
@@ -82,3 +97,4 @@ export const seedInitialUsers = async () => {
     }
 };
 
+    
