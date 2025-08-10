@@ -20,7 +20,7 @@ const BookHistoryItemSchema = z.object({
 
 const RecommendBooksInputSchema = z.object({
   history: z.array(BookHistoryItemSchema).describe('The user\'s borrowing history.'),
-  allBooks: z.array(BookHistoryItemIte_Schema).describe('A list of all available books to recommend from.'),
+  allBooks: z.array(BookHistoryItemSchema).describe('A list of all available books to recommend from.'),
 });
 export type RecommendBooksInput = z.infer<typeof RecommendBooksInputSchema>;
 

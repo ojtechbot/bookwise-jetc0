@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Download, BookOpen, Lightbulb, Loader2, History, Star, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
 import { getBook, borrowBook, returnBook, type Book, submitReview, getReviews } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +26,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   const [reviews, setReviews] = useState<Review[]>([]);
   const { toast } = useToast();
 
-  const fetchBookAndReviews = async () => {
+  const fetchBookAndReviews = useCallback(async () => {
       setIsLoading(true);
       try {
         const [bookData, reviewsData] = await Promise.all([
@@ -41,11 +41,11 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [params.id]);
 
   useEffect(() => {
     fetchBookAndReviews();
-  }, [params.id]);
+  }, [fetchBookAndReviews]);
   
   const handleGenerateSummary = () => {
     if (!book) return;
