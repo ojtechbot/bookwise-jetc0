@@ -4,8 +4,8 @@ import './globals.css';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
-import { Preloader } from '@/components/preloader';
 import { AuthProvider } from '@/context/auth-context';
+
 
 export const metadata: Metadata = {
   title: 'Libroweb',
@@ -30,10 +30,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
         <AuthProvider>
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-          <Toaster />
+            <Header />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+            <Toaster />
         </AuthProvider>
       </body>
     </html>
