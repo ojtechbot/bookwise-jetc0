@@ -5,21 +5,13 @@ import { BookCard } from "@/components/book-card";
 import AiSearchSuggestions from "@/components/ai-search-suggestions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { searchBooks } from "@/ai/flows/search-books-flow";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Lightbulb, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const searchResults = [
-  { id: '1', title: 'Dune', author: 'Frank Herbert', coverUrl: 'https://placehold.co/300x450.png', hint: 'desert planet', category: 'Sci-Fi', year: 1965 },
-  { id: '2', title: 'Foundation', author: 'Isaac Asimov', coverUrl: 'https://placehold.co/300x450.png', hint: 'galaxy empire', category: 'Sci-Fi', year: 1951 },
-  { id: '3', title: 'Brave New World', author: 'Aldous Huxley', coverUrl: 'https://placehold.co/300x450.png', hint: 'future society', category: 'Dystopian', year: 1932 },
-  { id: '4', title: '1984', author: 'George Orwell', coverUrl: 'https://placehold.co/300x450.png', hint: 'dystopian future', category: 'Dystopian', year: 1949 },
-  { id: '5', title: 'The Lord of the Rings', author: 'J.R.R. Tolkien', coverUrl: 'https://placehold.co/300x450.png', hint: 'fantasy map', category: 'Fantasy', year: 1954 },
-  { id: '6', title: 'To Kill a Mockingbird', author: 'Harper Lee', coverUrl: 'https://placehold.co/300x450.png', hint: 'courtroom novel', category: 'Classic Literature', year: 1960 },
-];
+import { getBooks, type Book } from "@/services/book-service";
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
@@ -30,6 +22,24 @@ export default function SearchPage() {
   const [category, setCategory] = useState(searchParams.get('category') || '');
   const [aiReasoning, setAiReasoning] = useState('');
   const [isAiSearchPending, startAiSearchTransition] = useTransition();
+
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      setIsLoading(true);
+      try {
+        const books = await getBooks();
+        setAllBooks(books);
+      } catch (error) {
+        console.error("Failed to fetch books:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBooks();
+  }, []);
 
   useEffect(() => {
     setQuery(searchParams.get('q') || '');
@@ -67,13 +77,19 @@ export default function SearchPage() {
     router.push(`/search?${params.toString()}`);
   }
 
-  const filteredResults = searchResults.filter(book => {
-    const queryLower = query.toLowerCase();
-    const matchesQuery = query ? book.title.toLowerCase().includes(queryLower) || book.author.toLowerCase().includes(queryLower) : true;
-    const matchesAuthor = author ? book.author === author : true;
-    const matchesCategory = category ? book.category === category : true;
-    return matchesQuery && matchesAuthor && matchesCategory;
-  });
+  const filteredResults = useMemo(() => {
+    return allBooks.filter(book => {
+      const queryLower = query.toLowerCase();
+      const matchesQuery = query ? book.title.toLowerCase().includes(queryLower) || book.author.toLowerCase().includes(queryLower) : true;
+      const matchesAuthor = author ? book.author === author : true;
+      const matchesCategory = category ? book.category === category : true;
+      return matchesQuery && matchesAuthor && matchesCategory;
+    });
+  }, [allBooks, query, author, category]);
+
+  const uniqueAuthors = useMemo(() => [...new Set(allBooks.map(book => book.author))], [allBooks]);
+  const uniqueCategories = useMemo(() => [...new Set(allBooks.map(book => book.category))], [allBooks]);
+
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -102,33 +118,25 @@ export default function SearchPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="w-full sm:w-1/3">
             <Label htmlFor="author-filter">Author</Label>
-            <Select value={author} onValueChange={(value) => updateQueryParam('author', value)}>
+            <Select value={author} onValueChange={(value) => updateQueryParam('author', value === 'all' ? '' : value)}>
               <SelectTrigger id="author-filter">
                 <SelectValue placeholder="Filter by author" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Authors</SelectItem>
-                <SelectItem value="Frank Herbert">Frank Herbert</SelectItem>
-                <SelectItem value="Isaac Asimov">Isaac Asimov</SelectItem>
-                <SelectItem value="Aldous Huxley">Aldous Huxley</SelectItem>
-                <SelectItem value="George Orwell">George Orwell</SelectItem>
-                <SelectItem value="J.R.R. Tolkien">J.R.R. Tolkien</SelectItem>
-                <SelectItem value="Harper Lee">Harper Lee</SelectItem>
+                <SelectItem value="all">All Authors</SelectItem>
+                {uniqueAuthors.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="w-full sm:w-1/3">
             <Label htmlFor="category-filter">Category</Label>
-            <Select value={category} onValueChange={(value) => updateQueryParam('category', value)}>
+            <Select value={category} onValueChange={(value) => updateQueryParam('category', value === 'all' ? '' : value)}>
               <SelectTrigger id="category-filter">
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
-                <SelectItem value="Sci-Fi">Sci-Fi</SelectItem>
-                <SelectItem value="Dystopian">Dystopian</SelectItem>
-                <SelectItem value="Classic Literature">Classic Literature</SelectItem>
-                <SelectItem value="Fantasy">Fantasy</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
+                {uniqueCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -142,7 +150,11 @@ export default function SearchPage() {
 
       <div>
         <h2 className="text-2xl font-bold font-headline">Results {query && `for "${query}"`}</h2>
-        {filteredResults.length > 0 ? (
+        {isLoading ? (
+           <div className="flex justify-center mt-6">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+           </div>
+        ) : filteredResults.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
             {filteredResults.map(book => (
               <BookCard key={book.id} {...book} />

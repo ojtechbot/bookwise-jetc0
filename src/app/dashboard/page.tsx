@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Book, Clock, HelpCircle, History, Settings, Loader2 } from 'lucide-react';
+import { Book, History, HelpCircle, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,16 +19,14 @@ import { useToast } from '@/hooks/use-toast';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { getUser, type UserProfile, type BorrowedBook } from '@/services/user-service';
+import { getBook, type Book as BookInfo } from '@/services/book-service';
+import { format } from 'date-fns';
 
-const borrowedBooks = [
-  { id: '1', title: 'The Midnight Library', author: 'Matt Haig', dueDate: '2024-08-15' },
-  { id: '2', title: 'Project Hail Mary', author: 'Andy Weir', dueDate: '2024-08-22' },
-];
-
-const historyBooks = [
-  { id: '3', title: 'Klara and the Sun', author: 'Kazuo Ishiguro', returnDate: '2024-07-20' },
-  { id: '4', title: 'The Vanishing Half', author: 'Brit Bennett', returnDate: '2024-07-11' },
-];
+type PopulatedBorrowedBook = BorrowedBook & {
+  title: string;
+  author: string;
+};
 
 const requestFormSchema = z.object({
   title: z.string().min(3, { message: 'Book title must be at least 3 characters.' }),
@@ -39,14 +37,31 @@ const requestFormSchema = z.object({
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [borrowedBooks, setBorrowedBooks] = useState<PopulatedBorrowedBook[]>([]);
+  const [historyBooks, setHistoryBooks] = useState<PopulatedBorrowedBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPending, startTransition] = useTransition();
+  const [isRequestPending, startRequestTransition] = useTransition();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
+        const profile = await getUser(user.uid);
+        setUserProfile(profile);
+
+        if (profile?.borrowedBooks) {
+           const populatedBooks = await Promise.all(
+               profile.borrowedBooks.map(async (b) => {
+                   const bookInfo = await getBook(b.bookId);
+                   return { ...b, title: bookInfo?.title || 'Unknown', author: bookInfo?.author || 'Unknown' };
+               })
+           );
+           setBorrowedBooks(populatedBooks.filter(b => b.status === 'borrowed'));
+           setHistoryBooks(populatedBooks.filter(b => b.status === 'returned'));
+        }
+
       } else {
         router.push('/login'); 
       }
@@ -64,7 +79,7 @@ export default function DashboardPage() {
   });
 
   const onSubmit = (values: z.infer<typeof requestFormSchema>) => {
-    startTransition(async () => {
+    startRequestTransition(async () => {
       try {
         const result = await requestBook(values);
         if (result.success) {
@@ -141,17 +156,20 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {borrowedBooks.map(book => (
-                    <TableRow key={book.id}>
+                  {borrowedBooks.length > 0 ? borrowedBooks.map(book => (
+                    <TableRow key={book.bookId}>
                       <TableCell className="font-medium">{book.title}</TableCell>
                       <TableCell>{book.author}</TableCell>
-                      <TableCell>{book.dueDate}</TableCell>
+                      <TableCell>{format(book.dueDate.toDate(), 'PPP')}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="mr-2">Read Online</Button>
-                        <Button variant="outline" size="sm">Renew</Button>
+                        <Button asChild variant="outline" size="sm" className="mr-2"><Link href={`/book/${book.bookId}`}>View Details</Link></Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center">You have no borrowed books.</TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -174,16 +192,20 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {historyBooks.map(book => (
-                    <TableRow key={book.id}>
+                   {historyBooks.length > 0 ? historyBooks.map(book => (
+                    <TableRow key={book.bookId}>
                       <TableCell className="font-medium">{book.title}</TableCell>
                       <TableCell>{book.author}</TableCell>
-                      <TableCell>{book.returnDate}</TableCell>
+                      <TableCell>{book.returnedDate ? format(book.returnedDate.toDate(), 'PPP') : 'N/A'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm">Borrow Again</Button>
+                        <Button asChild variant="outline" size="sm"><Link href={`/book/${book.bookId}`}>Borrow Again</Link></Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                   )) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center">You have no borrowing history.</TableCell>
+                    </TableRow>
+                   )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -219,7 +241,7 @@ export default function DashboardPage() {
                         <FormLabel>Reason for Request</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="e.g., 'This book is essential for my research project on...' (optional)"
+                            placeholder="e.g., 'This book is essential for my research project on...'"
                             {...field}
                           />
                         </FormControl>
@@ -227,8 +249,8 @@ export default function DashboardPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" disabled={isPending}>
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Button type="submit" disabled={isRequestPending}>
+                    {isRequestPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Request
                   </Button>
                 </form>

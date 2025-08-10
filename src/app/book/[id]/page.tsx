@@ -3,31 +3,52 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Download, BookOpen, Lightbulb, Loader2 } from 'lucide-react';
+import { Download, BookOpen, Lightbulb, Loader2, History } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
+import { getBook, borrowBook, returnBook, type Book } from '@/services/book-service';
+import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
+import { getUser, type UserProfile } from '@/services/user-service';
 
 export default function BookDetailsPage({ params }: { params: { id: string } }) {
-  // In a real app, you would fetch book data based on params.id
-  const book = {
-    id: params.id,
-    title: 'The Great Gatsby',
-    author: 'F. Scott Fitzgerald',
-    coverUrl: 'https://placehold.co/400x600.png',
-    summary: "The Great Gatsby, F. Scott Fitzgerald's third book, stands as the supreme achievement of his career. This exemplary novel of the Jazz Age has been acclaimed by generations of readers. The story of the fabulously wealthy Jay Gatsby and his new love for the beautiful Daisy Buchanan, of lavish parties on Long Island at a time when 'gin was the national drink and sex the national obsession,' it is an exquisitely crafted tale of America in the 1920s.",
-    authorInfo: "Francis Scott Key Fitzgerald (September 24, 1896 – December 21, 1940) was an American novelist, essayist, short story writer, and screenwriter. He was best known for his novels depicting the flamboyance and excess of the Jazz Age—a term which he coined.",
-    category: "Classic Literature",
-    published: "1925",
-  };
-
+  const [book, setBook] = useState<Book | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSummaryPending, startSummaryTransition] = useTransition();
+  const [isActionPending, startActionTransition] = useTransition();
   const [aiSummary, setAiSummary] = useState('');
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchBookAndUser = async () => {
+      setIsLoading(true);
+      try {
+        const bookData = await getBook(params.id);
+        setBook(bookData);
+
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+            const profile = await getUser(currentUser.uid);
+            setUserProfile(profile);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch book data:", error);
+        setBook(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBookAndUser();
+  }, [params.id]);
 
   const handleGenerateSummary = () => {
+    if (!book) return;
     startSummaryTransition(async () => {
       try {
         const result = await summarizeBook({ title: book.title, author: book.author });
@@ -38,6 +59,62 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
       }
     });
   };
+
+  const handleBorrow = () => {
+    if (!book || !auth.currentUser) return;
+    startActionTransition(async () => {
+        try {
+            await borrowBook(book.id, auth.currentUser.uid);
+            const updatedBook = await getBook(book.id);
+            const updatedProfile = await getUser(auth.currentUser.uid);
+            setBook(updatedBook);
+            setUserProfile(updatedProfile);
+            toast({ title: 'Success!', description: `You have borrowed "${book.title}".` });
+        } catch (error: any) {
+            console.error("Failed to borrow book:", error);
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        }
+    });
+  };
+
+  const handleReturn = () => {
+     if (!book || !auth.currentUser) return;
+    startActionTransition(async () => {
+        try {
+            await returnBook(book.id, auth.currentUser.uid);
+            const updatedBook = await getBook(book.id);
+            const updatedProfile = await getUser(auth.currentUser.uid);
+            setBook(updatedBook);
+            setUserProfile(updatedProfile);
+            toast({ title: 'Success!', description: `You have returned "${book.title}".` });
+        } catch (error: any) {
+            console.error("Failed to return book:", error);
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        }
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!book) {
+    return (
+      <div className="container mx-auto py-12 px-4 md:px-6 text-center">
+        <h1 className="text-4xl font-bold">Book not found</h1>
+        <p className="mt-4 text-lg text-muted-foreground">
+          Sorry, we couldn't find the book you were looking for.
+        </p>
+      </div>
+    );
+  }
+  
+  const isBorrowedByUser = userProfile?.borrowedBooks?.some(b => b.bookId === book.id);
+  const isAvailable = book.availableCopies > 0;
 
   return (
     <div className="container mx-auto py-12 px-4 md:px-6">
@@ -59,9 +136,21 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
           <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary">{book.title}</h1>
           <p className="mt-2 text-xl text-muted-foreground">by {book.author}</p>
           <div className="mt-6 flex flex-col sm:flex-row gap-4">
-            <Button size="lg" className="w-full sm:w-auto">
-              <BookOpen className="mr-2 h-5 w-5" /> Read Online
-            </Button>
+             {isBorrowedByUser ? (
+                 <Button size="lg" className="w-full sm:w-auto" onClick={handleReturn} disabled={isActionPending}>
+                    {isActionPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <History className="mr-2 h-5 w-5" />}
+                    Return Book
+                </Button>
+             ) : (
+                <Button size="lg" className="w-full sm:w-auto" onClick={handleBorrow} disabled={!isAvailable || isActionPending}>
+                   {isActionPending ? (
+                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                   ) : (
+                       <BookOpen className="mr-2 h-5 w-5" />
+                   )}
+                   {isAvailable ? 'Borrow Book' : 'Unavailable'}
+                </Button>
+             )}
             <Button size="lg" variant="outline" className="w-full sm:w-auto">
               <Download className="mr-2 h-5 w-5" /> Download eBook
             </Button>
@@ -100,8 +189,8 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
           <div>
             <h2 className="text-2xl font-bold font-headline">Details</h2>
             <div className="mt-4 grid grid-cols-2 gap-4 text-lg">
-                <div><span className="font-semibold">Published:</span> {book.published}</div>
-                <div><span className="font-semibold">ID:</span> {book.id}</div>
+                <div><span className="font-semibold">Published:</span> {book.publishedYear}</div>
+                <div><span className="font-semibold">Available Copies:</span> {book.availableCopies}/{book.totalCopies}</div>
             </div>
           </div>
         </div>
@@ -109,3 +198,4 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     </div>
   );
 }
+

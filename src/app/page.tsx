@@ -1,16 +1,14 @@
-import { Book, Library, Search, Tag } from "lucide-react";
+
+'use client';
+
+import { Book, Library, Search, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookCard } from "@/components/book-card";
 import Link from "next/link";
-
-const latestBooks = [
-  { id: '1', title: 'The Midnight Library', author: 'Matt Haig', coverUrl: 'https://placehold.co/300x450.png', hint: 'library book' },
-  { id: '2', title: 'Project Hail Mary', author: 'Andy Weir', coverUrl: 'https://placehold.co/300x450.png', hint: 'space astronaut' },
-  { id: '3', title: 'Klara and the Sun', author: 'Kazuo Ishiguro', coverUrl: 'https://placehold.co/300x450.png', hint: 'robot sun' },
-  { id: '4', title: 'The Vanishing Half', author: 'Brit Bennett', coverUrl: 'https://placehold.co/300x450.png', hint: 'sisters portrait' },
-];
+import { useEffect, useState } from "react";
+import { getBooks, Book as BookType } from "@/services/book-service";
 
 const categories = [
   { name: 'Fiction', icon: Book },
@@ -22,6 +20,25 @@ const categories = [
 ];
 
 export default function Home() {
+  const [latestBooks, setLatestBooks] = useState<BookType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const books = await getBooks();
+        // Get the 4 most recently added books
+        const sortedBooks = books.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+        setLatestBooks(sortedBooks.slice(0, 4));
+      } catch (error) {
+        console.error("Failed to fetch latest books:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBooks();
+  }, []);
+
   return (
     <div className="flex flex-col items-center">
       <section className="w-full bg-primary/10 py-20 md:py-32">
@@ -51,11 +68,17 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-3xl font-bold text-center font-headline text-primary">Latest Additions</h2>
           <p className="text-center mt-2 mb-8 text-foreground/70">Check out the newest books in our collection.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {latestBooks.map(book => (
-              <BookCard key={book.id} {...book} />
-            ))}
-          </div>
+          {isLoading ? (
+             <div className="flex justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+             </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {latestBooks.map(book => (
+                <BookCard key={book.id} {...book} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

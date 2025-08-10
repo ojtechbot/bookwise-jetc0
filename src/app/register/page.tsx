@@ -4,18 +4,18 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { auth, createUserWithEmailAndPassword } from "@/lib/firebase";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { auth, createUserWithEmailAndPassword, updateProfile } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { addUser } from '@/services/user-service';
 
 const registerFormSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters."),
@@ -66,22 +66,27 @@ export default function RegisterPage() {
   const onSubmit: SubmitHandler<RegisterFormValues> = async (data) => {
     setIsPending(true);
     try {
-      if (data.role === 'staff') {
-        if (!data.email) throw new Error("Email is required for staff.");
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
-        toast({
-          title: "Registration Successful",
-          description: "Your staff account has been created. Please log in.",
-        });
-      } else { // Student registration
-        if (!data.regNumber) throw new Error("Registration Number is required for students.");
-        const studentEmail = `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
-        await createUserWithEmailAndPassword(auth, studentEmail, data.password);
-        toast({
-          title: "Registration Successful",
-          description: "Your student account has been created. Please log in.",
-        });
-      }
+      const email = data.role === 'staff'
+        ? data.email!
+        : `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, data.password);
+      const user = userCredential.user;
+
+      await updateProfile(user, { displayName: data.fullName });
+
+      await addUser({
+        uid: user.uid,
+        name: data.fullName,
+        email: user.email!,
+        role: data.role,
+        regNumber: data.regNumber || null,
+      });
+
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created. Please log in.",
+      });
       router.push('/login');
     } catch (error: any) {
       console.error("Registration failed:", error);
