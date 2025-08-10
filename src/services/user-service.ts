@@ -86,8 +86,9 @@ export const seedInitialUsers = async () => {
     initialUsers.forEach((user) => {
         // Use the `uid` from JSON as the document ID in Firestore
         const userRef = doc(db, 'users', user.uid);
+        const { password, ...userData } = user;
         batch.set(userRef, {
-            ...user,
+            ...userData,
             createdAt: serverTimestamp(),
             photoUrl: '',
             borrowedBooks: []
@@ -100,7 +101,3 @@ export const seedInitialUsers = async () => {
         console.error("Error seeding initial users: ", error);
     }
 };
-
-    
-
-    

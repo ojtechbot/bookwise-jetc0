@@ -38,14 +38,26 @@ const changePinSchema = z.object({
 
 type ChangePinFormValues = z.infer<typeof changePinSchema>;
 
+const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, "Your current password is required."),
+    newPassword: z.string().min(6, "New password must be at least 6 characters."),
+    confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+    message: "New passwords do not match.",
+    path: ["confirmPassword"],
+});
+
+type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+
 
 export default function SettingsPage() {
-  const { user, userProfile, isLoading, refreshUserProfile } = useAuth();
+  const { user, userProfile, isStudent, isLoading, refreshUserProfile } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [promptText, setPromptText] = useState('');
   const [isAvatarPending, startAvatarTransition] = useTransition();
   const [isProfilePending, startProfileTransition] = useTransition();
   const [isPinPending, startPinTransition] = useTransition();
+  const [isPasswordPending, startPasswordTransition] = useTransition();
   const { toast } = useToast();
 
   const profileForm = useForm<ProfileFormValues>({
@@ -56,6 +68,11 @@ export default function SettingsPage() {
   const pinForm = useForm<ChangePinFormValues>({
     resolver: zodResolver(changePinSchema),
     defaultValues: { currentPin: '', newPin: '', confirmPin: '' },
+  });
+
+  const passwordForm = useForm<ChangePasswordFormValues>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
   useEffect(() => {
@@ -177,6 +194,30 @@ export default function SettingsPage() {
             description = "Too many attempts. Please try again later.";
         }
         toast({ title: 'PIN Update Failed', description, variant: 'destructive' });
+      }
+    })
+  }
+
+  const onPasswordSubmit = (values: ChangePasswordFormValues) => {
+    if (!user) return;
+    startPasswordTransition(async () => {
+      try {
+        if (!user.email) throw new Error("User email is not available.");
+        const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, values.newPassword);
+        passwordForm.reset();
+        toast({ title: 'Password Updated!', description: 'Your password has been changed successfully.' });
+      } catch (error: any) {
+        console.error("Failed to update password:", error);
+        let description = "Could not update your password. Please try again.";
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            description = "The current password you entered is incorrect.";
+        }
+         if (error.code === 'auth/too-many-requests') {
+            description = "Too many attempts. Please try again later.";
+        }
+        toast({ title: 'Password Update Failed', description, variant: 'destructive' });
       }
     })
   }
@@ -310,7 +351,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-           {userProfile?.role === 'student' && (
+           {isStudent && (
              <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><KeyRound /> Security</CardTitle>
@@ -367,10 +408,66 @@ export default function SettingsPage() {
                 </CardContent>
              </Card>
            )}
+
+            {!isStudent && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><KeyRound /> Security</CardTitle>
+                    <CardDescription>Change your account password.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...passwordForm}>
+                        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                            <FormField
+                                control={passwordForm.control}
+                                name="currentPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Current Password</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} disabled={isPasswordPending} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={passwordForm.control}
+                                name="newPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>New Password</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} disabled={isPasswordPending} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={passwordForm.control}
+                                name="confirmPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Confirm New Password</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" {...field} disabled={isPasswordPending} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" disabled={isPasswordPending || !passwordForm.formState.isDirty}>
+                                {isPasswordPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Change Password
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+             </Card>
+           )}
         </div>
       </div>
     </div>
   );
 }
-
-    
