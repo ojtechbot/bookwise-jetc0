@@ -11,12 +11,12 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "@/lib/firebase";
+import { auth, signInWithEmailAndPassword } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Loader2, User, Briefcase, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { getUser, addUser } from "@/services/user-service";
+import { getUser } from "@/services/user-service";
 
 const studentFormSchema = z.object({
   regNumber: z.string().min(1, "Registration number is required."),
@@ -75,92 +75,49 @@ export default function LoginPage() {
 
   const onStaffSubmit: SubmitHandler<StaffFormValues> = async (data) => {
     setIsPending(true);
-    
     try {
         await signInWithEmailAndPassword(auth, data.email, data.password);
-    } catch (signInError: any) {
-        // If user not found, try to create them, but ONLY if they are the special admin/librarian
-        const isMockStaff = ['admin@libroweb.io', 'librarian@libroweb.io'].includes(data.email);
-        if (signInError.code === 'auth/user-not-found' && isMockStaff) {
-            try {
-                await createUserWithEmailAndPassword(auth, data.email, data.password);
-                // After creating, try signing in again to establish session
-                await signInWithEmailAndPassword(auth, data.email, data.password);
-            } catch (creationError: any) {
-                toast({
-                    title: "Account Creation Failed",
-                    description: creationError.message,
-                    variant: "destructive",
-                });
-                setIsPending(false);
-                return;
-            }
-        } else {
-            // For all other errors, or if it's not a mock staff user, show the original sign-in error
-            let description = "An unexpected error occurred.";
-            if (signInError.code) {
-                switch (signInError.code) {
-                    case 'auth/user-not-found':
-                    case 'auth/wrong-password':
-                    case 'auth/invalid-credential':
-                        description = 'Invalid email or password.';
-                        break;
-                    case 'auth/too-many-requests':
-                        description = 'Access temporarily disabled due to too many failed login attempts. Please reset your password or try again later.';
-                        break;
-                    default:
-                        description = signInError.message;
-                }
-            }
-            toast({
-                title: "Login Failed",
-                description: description,
-                variant: "destructive",
-            });
-            setIsPending(false);
-            return;
+        
+        const user = auth.currentUser;
+        if (!user) throw new Error("User authentication failed.");
+        
+        const userProfile = await getUser(user.uid);
+        if (!userProfile) {
+            throw new Error("User profile not found in database.");
         }
-    }
 
-    try {
-      // This block now runs after a successful sign-in or creation+sign-in
-      const user = auth.currentUser;
-      if (!user) throw new Error("User authentication failed.");
-
-      // Ensure user profile exists in Firestore
-      const userProfile = await getUser(user.uid);
-      if (!userProfile) {
-        // This case handles users created directly in Firebase Auth console
-        // or for the mock users on their very first login.
-        const name = user.email!.split('@')[0];
-        const role = name === 'admin' ? 'admin' : 'librarian'; // default to librarian if not admin
-        await addUser({
-            uid: user.uid,
-            name: user.displayName || name,
-            email: user.email!,
-            role: role as 'admin' | 'librarian',
-            regNumber: null,
+        toast({
+            title: "Login Successful",
+            description: "Welcome back!",
         });
-         if (!user.displayName) {
-            await updateProfile(user, { displayName: name });
-        }
-      }
-
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-      router.push('/admin');
+        
+        // Redirect based on role
+        router.push(userProfile.role === 'student' ? '/dashboard' : '/admin');
 
     } catch (error: any) {
-      console.error("Staff login/profile sync failed:", error);
-      toast({
-        title: "Login Failed",
-        description: error.message || "An unexpected error occurred during profile setup.",
-        variant: "destructive",
-      });
+        console.error("Staff login failed:", error);
+        let description = "An unexpected error occurred.";
+        if (error.code) {
+            switch (error.code) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    description = 'Invalid email or password.';
+                    break;
+                case 'auth/too-many-requests':
+                    description = 'Access temporarily disabled due to too many failed login attempts. Please reset your password or try again later.';
+                    break;
+                default:
+                    description = error.message;
+            }
+        }
+        toast({
+            title: "Login Failed",
+            description,
+            variant: "destructive",
+        });
     } finally {
-      setIsPending(false);
+        setIsPending(false);
     }
   };
 
