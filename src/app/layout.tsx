@@ -16,6 +16,8 @@ export const metadata: Metadata = {
 };
 
 function AppContent({ children }: { children: React.ReactNode }) {
+  'use client';
+  
   const { isLoading } = useAuth();
 
   return (
