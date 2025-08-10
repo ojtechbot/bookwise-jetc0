@@ -165,7 +165,10 @@ export default function DashboardPage() {
       <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-primary">Student Dashboard</h1>
-          <p className="text-lg text-muted-foreground">Welcome back, {user.displayName || 'Student'}.</p>
+          <p className="text-lg text-muted-foreground">Welcome back, {userProfile?.name || 'Student'}.</p>
+           {userProfile?.regNumber && (
+            <p className="text-sm text-muted-foreground">Registration No: {userProfile.regNumber}</p>
+           )}
         </div>
         <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard/settings">
