@@ -56,10 +56,10 @@ export default function AdminDashboardPage() {
   
   useEffect(() => {
     if (!isLoading) {
-      if (user && !isStudent) {
-        fetchData();
-      } else {
+      if (!user || isStudent) {
         router.push(isStudent ? '/dashboard' : '/login');
+      } else {
+        fetchData();
       }
     }
   }, [user, isStudent, isLoading, router]);

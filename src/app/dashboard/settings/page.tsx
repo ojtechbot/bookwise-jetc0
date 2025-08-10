@@ -26,7 +26,7 @@ const profileFormSchema = z.object({
 });
 
 export default function SettingsPage() {
-  const { user, userProfile, isLoading } = useAuth();
+  const { user, userProfile, isLoading, refreshUserProfile } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isAvatarPending, startAvatarTransition] = useTransition();
@@ -82,7 +82,10 @@ export default function SettingsPage() {
     startProfileTransition(async () => {
       try {
         await updateUser(user.uid, { name: values.name });
-        await updateProfile(user, { displayName: values.name });
+        if (auth.currentUser) {
+            await updateProfile(auth.currentUser, { displayName: values.name });
+        }
+        await refreshUserProfile();
         toast({ title: 'Profile Updated!', description: 'Your changes have been saved successfully.' });
       } catch (error) {
         console.error('Failed to update profile:', error);

@@ -12,13 +12,11 @@ import { useState, useTransition, useEffect } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
 import { getBook, borrowBook, returnBook, type Book } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
-import { getUser, type UserProfile } from '@/services/user-service';
 import { useAuth } from '@/context/auth-context';
 
 export default function BookDetailsPage({ params }: { params: { id: string } }) {
   const [book, setBook] = useState<Book | null>(null);
-  const { user, userProfile, isLoading: isAuthLoading } = useAuth();
-  const [localUserProfile, setLocalUserProfile] = useState<UserProfile | null>(null);
+  const { user, userProfile, isLoading: isAuthLoading, refreshUserProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSummaryPending, startSummaryTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
@@ -41,11 +39,6 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     fetchBook();
   }, [params.id]);
   
-  useEffect(() => {
-    setLocalUserProfile(userProfile);
-  },[userProfile])
-
-
   const handleGenerateSummary = () => {
     if (!book) return;
     startSummaryTransition(async () => {
@@ -65,9 +58,8 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
         try {
             await borrowBook(book.id, user.uid);
             const updatedBook = await getBook(book.id);
-            const updatedProfile = await getUser(user.uid);
             setBook(updatedBook);
-            setLocalUserProfile(updatedProfile);
+            await refreshUserProfile();
             toast({ title: 'Success!', description: `You have borrowed "${book.title}".` });
         } catch (error: any) {
             console.error("Failed to borrow book:", error);
@@ -82,9 +74,8 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
         try {
             await returnBook(book.id, user.uid);
             const updatedBook = await getBook(book.id);
-            const updatedProfile = await getUser(user.uid);
             setBook(updatedBook);
-            setLocalUserProfile(updatedProfile);
+            await refreshUserProfile();
             toast({ title: 'Success!', description: `You have returned "${book.title}".` });
         } catch (error: any) {
             console.error("Failed to return book:", error);
@@ -112,7 +103,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     );
   }
   
-  const isBorrowedByUser = localUserProfile?.borrowedBooks?.some(b => b.bookId === book.id && b.status === 'borrowed');
+  const isBorrowedByUser = userProfile?.borrowedBooks?.some(b => b.bookId === book.id && b.status === 'borrowed');
   const isAvailable = book.availableCopies > 0;
 
   return (
@@ -141,7 +132,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
                     Return Book
                 </Button>
              ) : (
-                <Button size="lg" className="w-full sm:w-auto" onClick={handleBorrow} disabled={!isAvailable || isActionPending}>
+                <Button size="lg" className="w-full sm:w-auto" onClick={handleBorrow} disabled={!isAvailable || isActionPending || !user}>
                    {isActionPending ? (
                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                    ) : (

@@ -11,6 +11,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   isStudent: boolean;
   isLoading: boolean;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,14 +22,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isStudent, setIsStudent] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshUserProfile = async () => {
+    if (user) {
+      try {
+        const profile = await getUser(user.uid);
+        setUserProfile(profile);
+      } catch (error) {
+        console.error("Failed to refresh user profile:", error);
+        setUserProfile(null);
+      }
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setIsLoading(true);
-      if (user) {
-        setUser(user);
-        setIsStudent(!!user.email?.endsWith('@student.libroweb.io'));
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setIsStudent(!!currentUser.email?.endsWith('@student.libroweb.io'));
         try {
-          const profile = await getUser(user.uid);
+          const profile = await getUser(currentUser.uid);
           setUserProfile(profile);
         } catch (error) {
           console.error("Failed to fetch user profile:", error);
@@ -45,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const value = { user, userProfile, isStudent, isLoading };
+  const value = { user, userProfile, isStudent, isLoading, refreshUserProfile };
 
   return (
     <AuthContext.Provider value={value}>

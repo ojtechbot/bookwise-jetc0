@@ -18,7 +18,7 @@ import { requestBook } from '@/ai/flows/request-book-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { type BorrowedBook } from '@/services/user-service';
-import { getBook } from '@/services/book-service';
+import { getBook, type Book as BookType } from '@/services/book-service';
 import { format } from 'date-fns';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -59,27 +59,42 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const populateBookDetails = async () => {
-      if (userProfile?.borrowedBooks) {
-         setIsBookDataLoading(true);
-         const populatedBooks = await Promise.all(
-             userProfile.borrowedBooks.map(async (b) => {
-                 const bookInfo = await getBook(b.bookId);
-                 return { ...b, title: bookInfo?.title || 'Unknown', author: bookInfo?.author || 'Unknown', category: bookInfo?.category || 'Unknown' };
-             })
-         );
-         setBorrowedBooks(populatedBooks.filter(b => b.status === 'borrowed'));
-         setHistoryBooks(populatedBooks.filter(b => b.status === 'returned'));
-         setIsBookDataLoading(false);
-      } else {
+      if (!userProfile?.borrowedBooks) {
+        setIsBookDataLoading(false);
+        return;
+      }
+      
+      setIsBookDataLoading(true);
+      try {
+        const populatedBooks = await Promise.all(
+          userProfile.borrowedBooks.map(async (b) => {
+            const bookInfo = await getBook(b.bookId);
+            return { 
+                ...b, 
+                title: bookInfo?.title ?? 'Unknown', 
+                author: bookInfo?.author ?? 'Unknown', 
+                category: bookInfo?.category ?? 'Unknown' 
+            };
+          })
+        );
+        setBorrowedBooks(populatedBooks.filter(b => b.status === 'borrowed'));
+        setHistoryBooks(populatedBooks.filter(b => b.status === 'returned'));
+      } catch (error) {
+        console.error("Failed to populate book details:", error);
         setBorrowedBooks([]);
         setHistoryBooks([]);
+      } finally {
         setIsBookDataLoading(false);
       }
     };
+
     if (userProfile) {
-        populateBookDetails();
+      populateBookDetails();
+    } else if (!isLoading) {
+      // If not loading and no profile, no books to load
+      setIsBookDataLoading(false);
     }
-  }, [userProfile]);
+  }, [userProfile, isLoading]);
 
   const form = useForm<z.infer<typeof requestFormSchema>>({
     resolver: zodResolver(requestFormSchema),

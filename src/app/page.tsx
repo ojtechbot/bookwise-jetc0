@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { BookCard } from "@/components/book-card";
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { getBooks, getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
@@ -44,7 +44,7 @@ export default function Home() {
     fetchInitialData();
   }, []);
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     if (!userProfile || !userProfile.borrowedBooks || userProfile.borrowedBooks.length === 0 || allBooks.length === 0) {
       return;
     }
@@ -77,7 +77,7 @@ export default function Home() {
     } finally {
       setIsRecommendationsLoading(false);
     }
-  }
+  }, [userProfile, allBooks]);
   
   const latestBooks = useMemo(() => {
       return [...allBooks].sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)).slice(0, 4);
