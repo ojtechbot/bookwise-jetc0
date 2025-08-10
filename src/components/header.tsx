@@ -8,18 +8,44 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { onAuthStateChanged, signOut, type User as FirebaseUser } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 export function Header() {
   const router = useRouter();
-  // NOTE: This is a simulation of auth state. In a real app, you'd use a proper auth provider.
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const { toast } = useToast();
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogout = () => {
-    // In a real app, you would clear auth state, tokens, etc.
-    setIsLoggedIn(false);
-    router.push('/login');
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      router.push('/login');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Logout Failed",
+        description: "Could not log you out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+  
+  const isLoggedIn = !!user;
 
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
@@ -58,15 +84,15 @@ export function Header() {
           <Link href="/" className="text-foreground/70 hover:text-primary transition-colors">Home</Link>
           <Link href="/search" className="text-foreground/70 hover:text-primary transition-colors">Search</Link>
           {isLoggedIn && <Link href="/dashboard" className="text-foreground/70 hover:text-primary transition-colors">Dashboard</Link>}
-          {isLoggedIn && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
+           {isLoggedIn && user?.email && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
         </nav>
         <div className="flex items-center gap-4 ml-auto">
-          {isLoggedIn ? (
+          {isLoading ? null : isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar>
-                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                    <AvatarImage src={user.photoURL ?? "https://github.com/shadcn.png"} alt={user.displayName ?? "User Avatar"} />
                     <AvatarFallback>
                       <User />
                     </AvatarFallback>
@@ -76,8 +102,8 @@ export function Header() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Alex Johnson</p>
-                    <p className="text-xs leading-none text-muted-foreground">Reg No: 20240001</p>
+                    <p className="text-sm font-medium leading-none">{user.displayName || "User"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
