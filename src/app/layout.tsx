@@ -6,6 +6,7 @@ import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/context/auth-context';
 import { ThemeProvider } from '@/context/theme-provider';
+import { AiChatWidget } from '@/components/ai-chat-widget';
 
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
               <main className="flex-grow">{children}</main>
               <Footer />
               <Toaster />
+              <AiChatWidget />
           </AuthProvider>
         </ThemeProvider>
       </body>
