@@ -10,7 +10,7 @@ export function Preloader() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 1500); 
+    }, 2000); 
 
     return () => clearTimeout(timer);
   }, []);
@@ -19,8 +19,11 @@ export function Preloader() {
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
-      <div className="flex flex-col items-center">
-        <BookMarked className="w-16 h-16 text-primary animate-pulse" />
+      <div className="relative flex flex-col items-center">
+        <div className="absolute -inset-4">
+          <div className="w-24 h-24 rounded-full animate-spin-slow border-4 border-dashed border-primary border-t-transparent"></div>
+        </div>
+        <BookMarked className="w-16 h-16 text-primary" />
         <p className="mt-4 text-lg text-primary font-headline">Libroweb</p>
       </div>
     </div>
