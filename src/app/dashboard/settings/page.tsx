@@ -25,6 +25,8 @@ const profileFormSchema = z.object({
   email: z.string().email(),
 });
 
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
 export default function SettingsPage() {
   const { user, userProfile, isLoading, refreshUserProfile } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function SettingsPage() {
   const [isProfilePending, startProfileTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof profileFormSchema>>({
+  const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: { name: '', email: '' },
   });
@@ -56,14 +58,11 @@ export default function SettingsPage() {
     // Update Firestore user profile
     const dbUpdates: Partial<{name: string, photoUrl: string}> = {};
     if (updates.displayName) dbUpdates.name = updates.displayName;
-    // Note: We don't typically store photoURL in the Firestore user profile,
-    // as it's efficiently managed by Auth. But if needed, it would be added here.
     
     if (Object.keys(dbUpdates).length > 0) {
       await updateUser(auth.currentUser.uid, dbUpdates);
     }
     
-    // Refresh context to reflect changes app-wide
     await refreshUserProfile();
   }
 
@@ -78,8 +77,8 @@ export default function SettingsPage() {
           const reader = new FileReader();
           reader.onloadend = async () => {
             const dataUrl = reader.result as string;
-            setAvatarUrl(dataUrl);
             await updateAuthAndDbProfile({ photoURL: dataUrl });
+            setAvatarUrl(dataUrl);
             toast({ title: 'Avatar Updated!', description: 'Your new avatar has been set.' });
           };
           reader.readAsDataURL(file);
@@ -103,12 +102,12 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.error('Failed to generate avatar:', error);
-        toast({ title: 'Avatar Generation Failed', variant: 'destructive' });
+        toast({ title: 'Avatar Generation Failed', description: 'Please try a different prompt.', variant: 'destructive' });
       }
     });
   };
 
-  const onSubmit = (values: z.infer<typeof profileFormSchema>) => {
+  const onSubmit = (values: ProfileFormValues) => {
     if (!user || values.name === userProfile?.name) return;
     startProfileTransition(async () => {
       try {
@@ -157,7 +156,7 @@ export default function SettingsPage() {
                 </Label>
                 <Button asChild variant="outline" className="w-full">
                   <label htmlFor="picture-upload" className="cursor-pointer">
-                    <Upload className="mr-2" /> Upload Photo
+                    <Upload className="mr-2 h-4 w-4" /> Upload Photo
                   </label>
                 </Button>
                 <Input
@@ -181,7 +180,7 @@ export default function SettingsPage() {
                     disabled={isAvatarPending}
                   />
                   <Button onClick={handleGenerateAvatar} disabled={isAvatarPending || !prompt}>
-                    {isAvatarPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    {isAvatarPending ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                     <span className="sr-only">Generate</span>
                   </Button>
                 </div>
@@ -233,7 +232,7 @@ export default function SettingsPage() {
                   )}
                   <div className="space-y-2">
                     <Label>Role</Label>
-                    <Input value={userProfile?.role} readOnly disabled />
+                    <Input value={userProfile?.role} readOnly disabled className="capitalize"/>
                   </div>
                   <Button type="submit" className="w-full md:w-auto" disabled={isProfilePending || !form.formState.isDirty}>
                      {isProfilePending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -248,5 +247,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
