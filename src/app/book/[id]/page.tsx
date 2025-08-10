@@ -1,9 +1,15 @@
+
+'use client';
+
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Download, BookOpen } from 'lucide-react';
+import { Download, BookOpen, Lightbulb, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useState, useTransition } from 'react';
+import { summarizeBook } from '@/ai/flows/summarize-book-flow';
 
 export default function BookDetailsPage({ params }: { params: { id: string } }) {
   // In a real app, you would fetch book data based on params.id
@@ -16,6 +22,21 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     authorInfo: "Francis Scott Key Fitzgerald (September 24, 1896 – December 21, 1940) was an American novelist, essayist, short story writer, and screenwriter. He was best known for his novels depicting the flamboyance and excess of the Jazz Age—a term which he coined.",
     category: "Classic Literature",
     published: "1925",
+  };
+
+  const [isSummaryPending, startSummaryTransition] = useTransition();
+  const [aiSummary, setAiSummary] = useState('');
+
+  const handleGenerateSummary = () => {
+    startSummaryTransition(async () => {
+      try {
+        const result = await summarizeBook({ title: book.title, author: book.author });
+        setAiSummary(result.summary);
+      } catch (error) {
+        console.error("Failed to generate summary:", error);
+        setAiSummary("Sorry, we couldn't generate a summary at this time.");
+      }
+    });
   };
 
   return (
@@ -50,6 +71,26 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
             <h2 className="text-2xl font-bold font-headline">Summary</h2>
             <p className="mt-4 text-lg leading-relaxed">{book.summary}</p>
           </div>
+          <Accordion type="single" collapsible className="w-full mt-4">
+            <AccordionItem value="item-1">
+              <AccordionTrigger onClick={() => !aiSummary && handleGenerateSummary()}>
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-accent" />
+                  <span>AI-Powered TL;DR Summary</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-base leading-relaxed">
+                {isSummaryPending ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Generating summary...</span>
+                  </div>
+                ) : (
+                  aiSummary
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
           <Separator className="my-8" />
           <div>
             <h2 className="text-2xl font-bold font-headline">About the Author</h2>

@@ -1,14 +1,19 @@
-import { PlusCircle, Book as BookIcon, Users, BarChart } from 'lucide-react';
+
+'use client';
+
+import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
 const books = [
-  { id: '1', title: 'The Midnight Library', author: 'Matt Haig', category: 'Fiction', uploads: 125 },
-  { id: '2', title: 'Project Hail Mary', author: 'Andy Weir', category: 'Sci-Fi', uploads: 210 },
-  { id: '3', title: 'Klara and the Sun', author: 'Kazuo Ishiguro', category: 'Fiction', uploads: 88 },
+  { id: '1', title: 'The Midnight Library', author: 'Matt Haig', category: 'Fiction', downloads: 125 },
+  { id: '2', title: 'Project Hail Mary', author: 'Andy Weir', category: 'Sci-Fi', downloads: 210 },
+  { id: '3', title: 'Klara and the Sun', author: 'Kazuo Ishiguro', category: 'Fiction', downloads: 88 },
 ];
 
 const users = [
@@ -16,6 +21,27 @@ const users = [
   { id: '2', name: 'Maria Garcia', email: 'maria@example.com', role: 'Student' },
   { id: '3', name: 'Dr. Evelyn Reed', email: 'e.reed@example.com', role: 'Staff' },
 ];
+
+const chartData = [
+    { month: 'January', borrows: 186, signups: 80 },
+    { month: 'February', borrows: 305, signups: 200 },
+    { month: 'March', borrows: 237, signups: 120 },
+    { month: 'April', borrows: 273, signups: 190 },
+    { month: 'May', borrows: 209, signups: 130 },
+    { month: 'June', borrows: 214, signups: 140 },
+];
+
+const chartConfig = {
+    borrows: {
+        label: 'Borrows',
+        color: 'hsl(var(--chart-1))',
+    },
+    signups: {
+        label: 'Signups',
+        color: 'hsl(var(--chart-2))',
+    },
+};
+
 
 export default function AdminDashboardPage() {
   return (
@@ -30,35 +56,32 @@ export default function AdminDashboardPage() {
         </Button>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+       <section className="mb-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Books</CardTitle>
-            <BookIcon className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Library Activity Overview</CardTitle>
+            <CardDescription>Monthly borrows and new user signups.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,254</div>
-            <p className="text-xs text-muted-foreground">+20 since last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+2,350</div>
-            <p className="text-xs text-muted-foreground">+180.1% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Borrows</CardTitle>
-            <BarChart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+12,234</div>
-            <p className="text-xs text-muted-foreground">+19% from last month</p>
+            <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+              <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      tickMargin={10}
+                      axisLine={false}
+                      tickFormatter={(value) => value.slice(0, 3)}
+                    />
+                    <YAxis />
+                    <Tooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Bar dataKey="borrows" fill="var(--color-borrows)" radius={4} />
+                    <Bar dataKey="signups" fill="var(--color-signups)" radius={4} />
+                  </BarChart>
+              </ResponsiveContainer>
+             </ChartContainer>
           </CardContent>
         </Card>
       </section>
@@ -91,7 +114,7 @@ export default function AdminDashboardPage() {
                       <TableCell className="font-medium">{book.title}</TableCell>
                       <TableCell>{book.author}</TableCell>
                       <TableCell><Badge variant="secondary">{book.category}</Badge></TableCell>
-                      <TableCell>{book.uploads}</TableCell>
+                      <TableCell>{book.downloads}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" className="mr-2">Edit</Button>
                         <Button variant="destructive" size="sm">Delete</Button>

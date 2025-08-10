@@ -5,19 +5,21 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Sparkles } from "lucide-react";
 import { suggestSearchTerms, type SuggestSearchTermsOutput } from '@/ai/flows/suggest-search-terms';
 
 type AiSearchSuggestionsProps = {
   initialQuery?: string;
+  onAdvancedSearch: (query: string) => void;
+  isPending: boolean;
 };
 
-export default function AiSearchSuggestions({ initialQuery = '' }: AiSearchSuggestionsProps) {
+export default function AiSearchSuggestions({ initialQuery = '', onAdvancedSearch, isPending }: AiSearchSuggestionsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isPending, startTransition] = useTransition();
+  const [isSuggestPending, startSuggestTransition] = useTransition();
 
   const handleSearch = (newQuery: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -27,7 +29,7 @@ export default function AiSearchSuggestions({ initialQuery = '' }: AiSearchSugge
 
   const getSuggestions = useCallback((currentQuery: string) => {
     if (currentQuery.length > 2) {
-      startTransition(async () => {
+      startSuggestTransition(async () => {
         try {
           const result: SuggestSearchTermsOutput = await suggestSearchTerms({ query: currentQuery });
           setSuggestions(result.suggestions || []);
@@ -40,6 +42,10 @@ export default function AiSearchSuggestions({ initialQuery = '' }: AiSearchSugge
       setSuggestions([]);
     }
   }, []);
+  
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -56,6 +62,10 @@ export default function AiSearchSuggestions({ initialQuery = '' }: AiSearchSugge
     handleSearch(query);
   }
 
+  const handleAdvancedSearchClick = () => {
+    onAdvancedSearch(query);
+  }
+
   return (
     <div className="space-y-4">
       <form onSubmit={onFormSubmit} className="flex items-center gap-2">
@@ -64,19 +74,24 @@ export default function AiSearchSuggestions({ initialQuery = '' }: AiSearchSugge
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for books by title, author, or subject..."
+            placeholder="Search for books, or try an advanced query like 'sci-fi by Asimov from the 1950s'..."
             className="flex-grow text-base pr-10"
             aria-label="Search"
+            disabled={isPending}
           />
-          {isPending && (
+          {isSuggestPending && (
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
           )}
         </div>
-        <Button type="submit" size="lg" aria-label="Search">
+        <Button type="submit" size="lg" aria-label="Search" disabled={isPending}>
           <Search className="h-5 w-5" />
         </Button>
+         <Button type="button" size="lg" aria-label="Advanced Search" onClick={handleAdvancedSearchClick} disabled={isPending || !query}>
+          {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+          <span className="hidden sm:inline-block ml-2">AI Search</span>
+        </Button>
       </form>
-      {suggestions.length > 0 && (
+      {suggestions.length > 0 && !isPending && (
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm font-medium">Related:</span>
           {suggestions.map((suggestion, index) => (
