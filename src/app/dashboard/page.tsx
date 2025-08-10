@@ -1,8 +1,9 @@
-import { Book, Clock, HelpCircle, History } from 'lucide-react';
+import { Book, Clock, HelpCircle, History, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Link from 'next/link';
 
 const borrowedBooks = [
   { id: '1', title: 'The Midnight Library', author: 'Matt Haig', dueDate: '2024-08-15' },
@@ -17,9 +18,17 @@ const historyBooks = [
 export default function DashboardPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold font-headline text-primary">Student Dashboard</h1>
-        <p className="text-lg text-muted-foreground">Welcome back, Alex.</p>
+      <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-4xl font-bold font-headline text-primary">Student Dashboard</h1>
+          <p className="text-lg text-muted-foreground">Welcome back, Alex.</p>
+        </div>
+        <Button asChild variant="outline" className="mt-4 md:mt-0">
+          <Link href="/dashboard/settings">
+            <Settings className="mr-2 h-4 w-4" />
+            Profile Settings
+          </Link>
+        </Button>
       </header>
       <Tabs defaultValue="borrowed" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-lg">
