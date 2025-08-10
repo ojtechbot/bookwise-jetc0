@@ -1,24 +1,20 @@
 
 'use client';
 
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { Loader2, PlusCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { useEffect, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-
-const books = [
-  { id: '1', title: 'The Midnight Library', author: 'Matt Haig', category: 'Fiction', downloads: 125 },
-  { id: '2', title: 'Project Hail Mary', author: 'Andy Weir', category: 'Sci-Fi', downloads: 210 },
-  { id: '3', title: 'Klara and the Sun', author: 'Kazuo Ishiguro', category: 'Fiction', downloads: 88 },
-];
+import { useEffect, useState } from 'react';
+import { getBooks, type Book } from '@/services/book-service';
+import { AddBookDialog } from '@/components/add-book-dialog';
 
 const users = [
   { id: '1', name: 'Admin User', email: 'admin@libroweb.io', role: 'Admin' },
@@ -51,15 +47,29 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBooksLoading, setIsBooksLoading] = useState(true);
+  const [books, setBooks] = useState<Book[]>([]);
+
+  const fetchBooks = async () => {
+    setIsBooksLoading(true);
+    try {
+      const booksData = await getBooks();
+      setBooks(booksData);
+    } catch (error) {
+      console.error("Failed to fetch books:", error);
+    } finally {
+      setIsBooksLoading(false);
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Simple check if user is staff/admin based on email domain
         if (user.email && !user.email.endsWith('@student.libroweb.io')) {
            setUser(user);
+           fetchBooks();
         } else {
-           router.push('/dashboard'); // Redirect students
+           router.push('/dashboard');
         }
       } else {
         router.push('/login');
@@ -88,9 +98,11 @@ export default function AdminDashboardPage() {
           <h1 className="text-4xl font-bold font-headline text-primary">Admin Dashboard</h1>
           <p className="text-lg text-muted-foreground">Manage your digital library resources.</p>
         </div>
-        <Button className="mt-4 md:mt-0">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add New Book
-        </Button>
+        <AddBookDialog onBookAdded={fetchBooks}>
+            <Button className="mt-4 md:mt-0">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add New Book
+            </Button>
+        </AddBookDialog>
       </header>
 
        <section className="mb-8">
@@ -135,31 +147,37 @@ export default function AdminDashboardPage() {
               <CardDescription>Upload, categorize, or delete ebooks from the library.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Author</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Downloads</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {books.map((book) => (
-                    <TableRow key={book.id}>
-                      <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell>{book.author}</TableCell>
-                      <TableCell><Badge variant="secondary">{book.category}</Badge></TableCell>
-                      <TableCell>{book.downloads}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="mr-2">Edit</Button>
-                        <Button variant="destructive" size="sm">Delete</Button>
-                      </TableCell>
+              {isBooksLoading ? (
+                 <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                 </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Author</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Copies</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {books.map((book) => (
+                      <TableRow key={book.id}>
+                        <TableCell className="font-medium">{book.title}</TableCell>
+                        <TableCell>{book.author}</TableCell>
+                        <TableCell><Badge variant="secondary">{book.category}</Badge></TableCell>
+                        <TableCell>{book.availableCopies}/{book.totalCopies}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="outline" size="sm" className="mr-2">Edit</Button>
+                          <Button variant="destructive" size="sm">Delete</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
