@@ -86,7 +86,7 @@ h1, h2, h3, h4, h5, h6 {
 	--book-cover-color: hsl(var(--background));
 	--page-color: hsl(var(--border));
 	--page-width: 4px;
-	--anim-duration: 1.5s;
+	--anim-duration: 1.2s; /* Faster animation */
 
 	width: var(--book-width);
 	height: var(--book-height);
@@ -119,10 +119,10 @@ h1, h2, h3, h4, h5, h6 {
 	animation: page-turn var(--anim-duration) ease-in-out infinite;
 }
 
-.book__pg--2 { animation-delay: 0.1s; }
-.book__pg--3 { animation-delay: 0.2s; }
-.book__pg--4 { animation-delay: 0.3s; }
-.book__pg--5 { animation-delay: 0.4s; }
+.book__pg--2 { animation-delay: 0.075s; }
+.book__pg--3 { animation-delay: 0.15s; }
+.book__pg--4 { animation-delay: 0.225s; }
+.book__pg--5 { animation-delay: 0.3s; }
 
 @keyframes cover-turn {
 	0%, 10% { transform: rotateY(0deg); }

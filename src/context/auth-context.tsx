@@ -44,16 +44,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setIsLoading(true);
       setUser(currentUser);
       if (currentUser) {
         setIsStudent(!!currentUser.email?.endsWith('@student.libroweb.io'));
-        await fetchUserProfile(currentUser);
+        // Fetch profile but don't wait for it to finish loading,
+        // this makes the UI appear faster.
+        fetchUserProfile(currentUser).then(() => {
+          setIsLoading(false);
+        });
       } else {
         setIsStudent(false);
         setUserProfile(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
