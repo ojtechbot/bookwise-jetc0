@@ -5,7 +5,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { Preloader } from '@/components/preloader';
-import { AuthProvider, useAuth } from '@/context/auth-context';
+import { AuthProvider } from '@/context/auth-context';
 
 export const metadata: Metadata = {
   title: 'Libroweb',
@@ -14,27 +14,6 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
   },
 };
-
-function AppContent({ children }: { children: React.ReactNode }) {
-  'use client';
-  
-  const { isLoading } = useAuth();
-
-  return (
-    <>
-      {isLoading ? (
-        <Preloader />
-      ) : (
-        <>
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
-          <Toaster />
-        </>
-      )}
-    </>
-  );
-}
 
 export default function RootLayout({
   children,
@@ -51,7 +30,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
         <AuthProvider>
-          <AppContent>{children}</AppContent>
+          <Header />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

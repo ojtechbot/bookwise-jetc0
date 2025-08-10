@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getUser, type UserProfile } from '@/services/user-service';
+import { Preloader } from '@/components/preloader';
 
 interface AuthContextType {
   user: User | null;
@@ -59,6 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserProfile]);
 
   const value = { user, userProfile, isStudent, isLoading, refreshUserProfile };
+
+  if (isLoading) {
+    return <Preloader />;
+  }
 
   return (
     <AuthContext.Provider value={value}>
