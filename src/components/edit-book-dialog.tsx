@@ -32,6 +32,7 @@ const editBookSchema = z.object({
   publishedYear: z.coerce.number().int().min(1000, 'Enter a valid year.'),
   totalCopies: z.coerce.number().int().min(1, 'There must be at least one copy.'),
   coverUrl: z.string().url('Please enter a valid image URL.'),
+  hint: z.string().optional(),
 });
 
 type EditBookFormValues = z.infer<typeof editBookSchema>;
@@ -58,6 +59,7 @@ export function EditBookDialog({ children, book, onBookEdited }: EditBookDialogP
       publishedYear: book.publishedYear,
       totalCopies: book.totalCopies,
       coverUrl: book.coverUrl,
+      hint: book.hint || '',
     },
   });
 
@@ -197,6 +199,19 @@ export function EditBookDialog({ children, book, onBookEdited }: EditBookDialogP
                     <FormLabel>Cover Image URL</FormLabel>
                     <FormControl>
                       <Input placeholder="https://example.com/cover.jpg" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+             <FormField
+                control={form.control}
+                name="hint"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image AI Hint</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., desert planet" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -32,6 +32,7 @@ const addBookSchema = z.object({
   publishedYear: z.coerce.number().int().min(1000, 'Enter a valid year.'),
   totalCopies: z.coerce.number().int().min(1, 'There must be at least one copy.'),
   coverUrl: z.string().url('Please enter a valid image URL.'),
+  hint: z.string().optional(),
 });
 
 type AddBookFormValues = z.infer<typeof addBookSchema>;
@@ -57,6 +58,7 @@ export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
       publishedYear: new Date().getFullYear(),
       totalCopies: 1,
       coverUrl: 'https://placehold.co/400x600.png',
+      hint: '',
     },
   });
 
@@ -129,7 +131,7 @@ export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
                 <FormItem>
                   <FormLabel>Summary</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="A brief summary of the book..." {...field} />
+                    <Textarea placeholder="A brief summary of the book..." {...field} rows={4} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -142,7 +144,7 @@ export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
                 <FormItem>
                   <FormLabel>About the Author</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Information about the author..." {...field} />
+                    <Textarea placeholder="Information about the author..." {...field} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -197,6 +199,19 @@ export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
                     <FormLabel>Cover Image URL</FormLabel>
                     <FormControl>
                       <Input placeholder="https://example.com/cover.jpg" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="hint"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image AI Hint</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., desert planet" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

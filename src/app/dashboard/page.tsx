@@ -171,9 +171,9 @@ export default function DashboardPage() {
       </header>
       <Tabs defaultValue="borrowed" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
-          <TabsTrigger value="borrowed"><Book className="mr-2 h-4 w-4" />Borrowed Books</TabsTrigger>
+          <TabsTrigger value="borrowed"><Book className="mr-2 h-4 w-4" />Borrowed</TabsTrigger>
           <TabsTrigger value="history"><History className="mr-2 h-4 w-4" />History</TabsTrigger>
-          <TabsTrigger value="stats"><BarChart2 className="mr-2 h-4 w-4" />My Stats</TabsTrigger>
+          <TabsTrigger value="stats"><BarChart2 className="mr-2 h-4 w-4" />Stats</TabsTrigger>
           <TabsTrigger value="requests"><HelpCircle className="mr-2 h-4 w-4" />Requests</TabsTrigger>
         </TabsList>
         <TabsContent value="borrowed" className="mt-6">
@@ -188,7 +188,7 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Author</TableHead>
+                    <TableHead className="hidden sm:table-cell">Author</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -197,7 +197,7 @@ export default function DashboardPage() {
                   {borrowedBooks.length > 0 ? borrowedBooks.map(book => (
                     <TableRow key={book.bookId}>
                       <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell>{book.author}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
                       <TableCell>{format(book.dueDate.toDate(), 'PPP')}</TableCell>
                       <TableCell className="text-right">
                         <Button asChild variant="outline" size="sm" className="mr-2"><Link href={`/book/${book.bookId}`}>View Details</Link></Button>
@@ -226,7 +226,7 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Author</TableHead>
+                    <TableHead className="hidden sm:table-cell">Author</TableHead>
                     <TableHead>Return Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -235,7 +235,7 @@ export default function DashboardPage() {
                    {historyBooks.length > 0 ? historyBooks.map(book => (
                     <TableRow key={book.bookId}>
                       <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell>{book.author}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{book.author}</TableCell>
                       <TableCell>{book.returnedDate ? format(book.returnedDate.toDate(), 'PPP') : 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <Button asChild variant="outline" size="sm"><Link href={`/book/${book.bookId}`}>Borrow Again</Link></Button>
@@ -355,5 +355,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
