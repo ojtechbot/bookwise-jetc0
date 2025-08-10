@@ -1,22 +1,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { BookMarked } from 'lucide-react';
 
 export function Preloader() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000); 
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!loading) return null;
-
   return (
     <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
       <div className="relative flex flex-col items-center">
