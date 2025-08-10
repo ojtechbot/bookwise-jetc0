@@ -189,8 +189,8 @@ export default function AdminDashboardPage() {
 
       <Tabs defaultValue="books">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="books">Book Management</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="books"><Book className="mr-2 h-4 w-4" />Book Management</TabsTrigger>
+          <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" />User Management</TabsTrigger>
         </TabsList>
         <TabsContent value="books" className="mt-6">
           <Card>
