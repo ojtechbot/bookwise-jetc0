@@ -72,16 +72,12 @@ export default function AdminDashboardPage() {
     return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: COLORS[index % COLORS.length] }));
   }, [books]);
 
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (!user) {
-    return null; // Redirecting...
   }
 
   return (
