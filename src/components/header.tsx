@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun } from "lucide-react";
+import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -119,9 +119,15 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={isStudent ? "/dashboard/settings" : "/admin"} className="flex items-center cursor-pointer">
+                  <Link href={isStudent ? "/dashboard" : "/admin"} className="flex items-center cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                  <Link href={isStudent ? "/dashboard/settings" : "/admin/settings"} className="flex items-center cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="flex items-center cursor-pointer">
