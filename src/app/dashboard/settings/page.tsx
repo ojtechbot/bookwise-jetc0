@@ -143,7 +143,8 @@ export default function SettingsPage() {
     if (!user) return;
     startPinTransition(async () => {
       try {
-        const credential = EmailAuthProvider.credential(user.email!, values.currentPin);
+        if (!user.email) throw new Error("User email is not available.");
+        const credential = EmailAuthProvider.credential(user.email, values.currentPin);
         await reauthenticateWithCredential(user, credential);
         await updatePassword(user, values.newPin);
         pinForm.reset();
