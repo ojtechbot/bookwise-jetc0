@@ -76,36 +76,56 @@ export default function LoginPage() {
   const onStaffSubmit: SubmitHandler<StaffFormValues> = async (data) => {
     setIsPending(true);
     
-    // Special handling for initial admin/librarian users to create their accounts on first login
-    const isMockStaff = ['admin@libroweb.io', 'librarian@libroweb.io'].includes(data.email);
-    if (isMockStaff) {
-         try {
-            await signInWithEmailAndPassword(auth, data.email, data.password);
-         } catch (e: any) {
-            if (e.code === 'auth/user-not-found') {
-                try {
-                    await createUserWithEmailAndPassword(auth, data.email, data.password);
-                } catch (creationError: any) {
-                     toast({
-                        title: "Login Failed",
-                        description: creationError.message,
-                        variant: "destructive",
-                    });
-                    setIsPending(false);
-                    return;
-                }
-            } else {
-                 toast({ title: "Login Failed", description: e.message, variant: "destructive" });
-                 setIsPending(false);
-                 return;
+    try {
+        await signInWithEmailAndPassword(auth, data.email, data.password);
+    } catch (signInError: any) {
+        // If user not found, try to create them, but ONLY if they are the special admin/librarian
+        const isMockStaff = ['admin@libroweb.io', 'librarian@libroweb.io'].includes(data.email);
+        if (signInError.code === 'auth/user-not-found' && isMockStaff) {
+            try {
+                await createUserWithEmailAndPassword(auth, data.email, data.password);
+                // After creating, try signing in again to establish session
+                await signInWithEmailAndPassword(auth, data.email, data.password);
+            } catch (creationError: any) {
+                toast({
+                    title: "Account Creation Failed",
+                    description: creationError.message,
+                    variant: "destructive",
+                });
+                setIsPending(false);
+                return;
             }
-         }
+        } else {
+            // For all other errors, or if it's not a mock staff user, show the original sign-in error
+            let description = "An unexpected error occurred.";
+            if (signInError.code) {
+                switch (signInError.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-credential':
+                        description = 'Invalid email or password.';
+                        break;
+                    case 'auth/too-many-requests':
+                        description = 'Access temporarily disabled due to too many failed login attempts. Please reset your password or try again later.';
+                        break;
+                    default:
+                        description = signInError.message;
+                }
+            }
+            toast({
+                title: "Login Failed",
+                description: description,
+                variant: "destructive",
+            });
+            setIsPending(false);
+            return;
+        }
     }
 
-
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
+      // This block now runs after a successful sign-in or creation+sign-in
+      const user = auth.currentUser;
+      if (!user) throw new Error("User authentication failed.");
 
       // Ensure user profile exists in Firestore
       const userProfile = await getUser(user.uid);
@@ -113,12 +133,12 @@ export default function LoginPage() {
         // This case handles users created directly in Firebase Auth console
         // or for the mock users on their very first login.
         const name = user.email!.split('@')[0];
-        const role = name === 'admin' ? 'admin' : 'staff';
+        const role = name === 'admin' ? 'admin' : 'librarian'; // default to librarian if not admin
         await addUser({
             uid: user.uid,
             name: user.displayName || name,
             email: user.email!,
-            role: role,
+            role: role as 'admin' | 'librarian',
             regNumber: null,
         });
          if (!user.displayName) {
@@ -133,25 +153,10 @@ export default function LoginPage() {
       router.push('/admin');
 
     } catch (error: any) {
-      console.error("Staff login failed:", error);
-      let description = "An unexpected error occurred.";
-      if (error.code) {
-        switch (error.code) {
-          case 'auth/user-not-found':
-          case 'auth/wrong-password':
-          case 'auth/invalid-credential':
-            description = 'Invalid email or password.';
-            break;
-          case 'auth/too-many-requests':
-            description = 'Access temporarily disabled due to too many failed login attempts. Please reset your password or try again later.';
-            break;
-          default:
-            description = error.message;
-        }
-      }
+      console.error("Staff login/profile sync failed:", error);
       toast({
         title: "Login Failed",
-        description: description,
+        description: error.message || "An unexpected error occurred during profile setup.",
         variant: "destructive",
       });
     } finally {
