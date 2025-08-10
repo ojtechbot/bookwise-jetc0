@@ -60,20 +60,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (user) {
-      setAvatarUrl(user.photoURL);
-    }
-    if (userProfile) {
-      profileForm.reset({ name: userProfile.name || '', email: userProfile.email || '' });
+      setAvatarUrl(user.photoURL ?? (userProfile?.photoUrl ?? null));
+      profileForm.reset({ 
+        name: user.displayName || (userProfile?.name || ''), 
+        email: user.email || (userProfile?.email || '') 
+      });
     }
   }, [user, userProfile, profileForm]);
   
   const updateAuthAndDbProfile = async (updates: { displayName?: string, photoURL?: string }) => {
     if (!auth.currentUser) throw new Error("No authenticated user found.");
     
-    // Update Firebase Auth profile
     await updateProfile(auth.currentUser, updates);
     
-    // Update Firestore user profile
     const dbUpdates: Partial<{name: string, photoUrl: string}> = {};
     if (updates.displayName) dbUpdates.name = updates.displayName;
     if (updates.photoURL) dbUpdates.photoUrl = updates.photoURL;
@@ -91,8 +90,7 @@ export default function SettingsPage() {
     if (file) {
       startAvatarTransition(async () => {
         try {
-          // In a real app, you would upload this file to Firebase Storage
-          // and get a URL back. For this example, we'll use a Data URL.
+          // This simulates uploading to a storage service and getting a URL.
           const reader = new FileReader();
           reader.onloadend = async () => {
             const dataUrl = reader.result as string;
@@ -127,7 +125,7 @@ export default function SettingsPage() {
   };
 
   const onProfileSubmit = (values: ProfileFormValues) => {
-    if (!user || values.name === userProfile?.name) return;
+    if (!user || values.name === (user.displayName || userProfile?.name)) return;
     startProfileTransition(async () => {
       try {
         await updateAuthAndDbProfile({ displayName: values.name });
@@ -152,7 +150,7 @@ export default function SettingsPage() {
       } catch (error: any) {
         console.error("Failed to update PIN:", error);
         let description = "Could not update your PIN. Please try again.";
-        if (error.code === 'auth/wrong-password') {
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
             description = "The current PIN you entered is incorrect.";
         }
          if (error.code === 'auth/too-many-requests') {
@@ -163,7 +161,7 @@ export default function SettingsPage() {
     })
   }
   
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -267,6 +265,7 @@ export default function SettingsPage() {
                         <FormControl>
                           <Input type="email" {...field} readOnly disabled />
                         </FormControl>
+                        <p className="text-xs text-muted-foreground pt-1">Email address cannot be changed. Please contact an admin for assistance.</p>
                          <FormMessage />
                       </FormItem>
                     )}
@@ -275,7 +274,7 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label htmlFor="reg-number">Registration Number</Label>
                       <Input id="reg-number" value={userProfile.regNumber} readOnly disabled />
-                       <p className="text-xs text-muted-foreground">Registration number cannot be changed. Please contact an admin for assistance.</p>
+                       <p className="text-xs text-muted-foreground">Registration number cannot be changed.</p>
                     </div>
                   )}
                   <div className="space-y-2">
@@ -339,7 +338,7 @@ export default function SettingsPage() {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" disabled={isPinPending}>
+                            <Button type="submit" disabled={isPinPending || !pinForm.formState.isDirty}>
                                 {isPinPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Change PIN
                             </Button>
@@ -354,4 +353,5 @@ export default function SettingsPage() {
   );
 }
 
+    
     
