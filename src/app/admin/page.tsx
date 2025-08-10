@@ -1,26 +1,23 @@
 
 'use client';
 
-import { Loader2, PlusCircle } from 'lucide-react';
+import { Loader2, PlusCircle, Book, Users, BarChart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
+import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { getBooks, type Book } from '@/services/book-service';
+import { useEffect, useState, useMemo } from 'react';
+import { getBooks, type Book as BookType } from '@/services/book-service';
 import { AddBookDialog } from '@/components/add-book-dialog';
-
-const users = [
-  { id: '1', name: 'Admin User', email: 'admin@libroweb.io', role: 'Admin' },
-  { id: '2', name: 'Librarian User', email: 'librarian@libroweb.io', role: 'Librarian' },
-  { id: '3', name: 'Alex Johnson', email: '20240001@student.libroweb.io', role: 'Student' },
-];
+import { EditBookDialog } from '@/components/edit-book-dialog';
+import { DeleteBookDialog } from '@/components/delete-book-dialog';
+import { getUsers, UserProfile } from '@/services/user-service';
 
 const chartData = [
     { month: 'January', borrows: 186, signups: 80 },
@@ -31,34 +28,31 @@ const chartData = [
     { month: 'June', borrows: 214, signups: 140 },
 ];
 
-const chartConfig = {
-    borrows: {
-        label: 'Borrows',
-        color: 'hsl(var(--chart-1))',
-    },
-    signups: {
-        label: 'Signups',
-        color: 'hsl(var(--chart-2))',
-    },
+const chartConfig: ChartConfig = {
+    borrows: { label: 'Borrows', color: 'hsl(var(--chart-1))' },
+    signups: { label: 'Signups', color: 'hsl(var(--chart-2))' },
 };
 
+const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isBooksLoading, setIsBooksLoading] = useState(true);
-  const [books, setBooks] = useState<Book[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [books, setBooks] = useState<BookType[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
-  const fetchBooks = async () => {
-    setIsBooksLoading(true);
+  const fetchData = async () => {
+    setIsDataLoading(true);
     try {
-      const booksData = await getBooks();
+      const [booksData, usersData] = await Promise.all([getBooks(), getUsers()]);
       setBooks(booksData);
+      setUsers(usersData);
     } catch (error) {
-      console.error("Failed to fetch books:", error);
+      console.error("Failed to fetch data:", error);
     } finally {
-      setIsBooksLoading(false);
+      setIsDataLoading(false);
     }
   }
 
@@ -67,7 +61,7 @@ export default function AdminDashboardPage() {
       if (user) {
         if (user.email && !user.email.endsWith('@student.libroweb.io')) {
            setUser(user);
-           fetchBooks();
+           fetchData();
         } else {
            router.push('/dashboard');
         }
@@ -78,6 +72,14 @@ export default function AdminDashboardPage() {
     });
     return () => unsubscribe();
   }, [router]);
+  
+  const categoryData = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    books.forEach(book => {
+        counts[book.category] = (counts[book.category] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value, fill: COLORS[Math.floor(Math.random() * COLORS.length)] }));
+  }, [books]);
 
   if (isLoading) {
     return (
@@ -98,14 +100,73 @@ export default function AdminDashboardPage() {
           <h1 className="text-4xl font-bold font-headline text-primary">Admin Dashboard</h1>
           <p className="text-lg text-muted-foreground">Manage your digital library resources.</p>
         </div>
-        <AddBookDialog onBookAdded={fetchBooks}>
+        <AddBookDialog onBookAdded={fetchData}>
             <Button className="mt-4 md:mt-0">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Book
             </Button>
         </AddBookDialog>
       </header>
+       <section className="mb-8 grid gap-4 md:grid-cols-3">
+          <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Total Books</CardTitle>
+                  <Book className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : books.length}</div>
+                  <p className="text-xs text-muted-foreground">in the entire catalog</p>
+              </CardContent>
+          </Card>
+           <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}</div>
+                   <p className="text-xs text-muted-foreground">{users.filter(u => u.role === 'student').length} students, {users.filter(u => u.role !== 'student').length} staff</p>
+              </CardContent>
+          </Card>
+           <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Monthly Activity</CardTitle>
+                  <BarChart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : '+573'}</div>
+                  <p className="text-xs text-muted-foreground">+201 since last month</p>
+              </CardContent>
+          </Card>
+      </section>
 
-       <section className="mb-8">
+       <section className="mb-8 grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Category Distribution</CardTitle>
+            <CardDescription>Breakdown of books by genre.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             {isDataLoading ? (
+                 <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                 </div>
+              ) : (
+                <ChartContainer config={{}} className="min-h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                                {categoryData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                            <Tooltip content={<ChartTooltipContent hideLabel />} />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </ChartContainer>
+             )}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle>Library Activity Overview</CardTitle>
@@ -113,8 +174,8 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-              <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={chartData}>
+              <ResponsiveContainer width="100%" height={300}>
+                  <RechartsBarChart data={chartData}>
                     <CartesianGrid vertical={false} />
                     <XAxis
                       dataKey="month"
@@ -128,7 +189,7 @@ export default function AdminDashboardPage() {
                     <Legend />
                     <Bar dataKey="borrows" fill="var(--color-borrows)" radius={4} />
                     <Bar dataKey="signups" fill="var(--color-signups)" radius={4} />
-                  </BarChart>
+                  </RechartsBarChart>
               </ResponsiveContainer>
              </ChartContainer>
           </CardContent>
@@ -147,7 +208,7 @@ export default function AdminDashboardPage() {
               <CardDescription>Upload, categorize, or delete ebooks from the library.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isBooksLoading ? (
+              {isDataLoading ? (
                  <div className="flex justify-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
@@ -170,8 +231,12 @@ export default function AdminDashboardPage() {
                         <TableCell><Badge variant="secondary">{book.category}</Badge></TableCell>
                         <TableCell>{book.availableCopies}/{book.totalCopies}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm" className="mr-2">Edit</Button>
-                          <Button variant="destructive" size="sm">Delete</Button>
+                           <EditBookDialog book={book} onBookEdited={fetchData}>
+                            <Button variant="outline" size="sm" className="mr-2">Edit</Button>
+                          </EditBookDialog>
+                          <DeleteBookDialog bookId={book.id} bookTitle={book.title} onBookDeleted={fetchData}>
+                            <Button variant="destructive" size="sm">Delete</Button>
+                          </DeleteBookDialog>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -188,31 +253,37 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage all registered users.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                       <TableCell>
-                        <Badge variant={user.role.includes('Admin') || user.role.includes('Librarian') ? 'default' : 'outline'}>{user.role}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="mr-2">Edit</Button>
-                        <Button variant="destructive" size="sm">Delete</Button>
-                      </TableCell>
+               {isDataLoading ? (
+                 <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                 </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Joined</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.uid}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.role.includes('staff') ? 'default' : 'outline'}>{user.role}</Badge>
+                        </TableCell>
+                        <TableCell>
+                            {/* Assuming createdAt is added to user profiles */}
+                            {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

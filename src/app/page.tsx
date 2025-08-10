@@ -1,14 +1,19 @@
 
 'use client';
 
-import { Book, Library, Search, Tag, Loader2 } from "lucide-react";
+import { Book, Library, Search, Tag, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { BookCard } from "@/components/book-card";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getBooks, Book as BookType } from "@/services/book-service";
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { getUser, type UserProfile, type BorrowedBook } from '@/services/user-service';
+import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
+
 
 const categories = [
   { name: 'Fiction', icon: Book },
@@ -19,25 +24,99 @@ const categories = [
   { name: 'Technology', icon: Tag },
 ];
 
+type PopulatedBorrowedBook = BorrowedBook & {
+  title: string;
+  author: string;
+  category: string;
+};
+
 export default function Home() {
-  const [latestBooks, setLatestBooks] = useState<BookType[]>([]);
+  const [allBooks, setAllBooks] = useState<BookType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
+  const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchBooks = async () => {
+    const fetchInitialData = async () => {
       try {
         const books = await getBooks();
-        // Get the 4 most recently added books
-        const sortedBooks = books.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-        setLatestBooks(sortedBooks.slice(0, 4));
+        setAllBooks(books);
       } catch (error) {
         console.error("Failed to fetch latest books:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchBooks();
+    fetchInitialData();
+    
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        setUser(user);
+        if(user) {
+            const profile = await getUser(user.uid);
+            setUserProfile(profile);
+        } else {
+            setUserProfile(null);
+        }
+    });
+    
+    return () => unsubscribe();
   }, []);
+
+  const fetchRecommendations = async () => {
+    if (!userProfile || !userProfile.borrowedBooks || userProfile.borrowedBooks.length === 0 || allBooks.length === 0) {
+      return;
+    }
+
+    setIsRecommendationsLoading(true);
+    try {
+      const history: PopulatedBorrowedBook[] = await Promise.all(
+        userProfile.borrowedBooks
+          .filter(b => b.status === 'returned')
+          .map(async (b) => {
+            const bookInfo = await getBook(b.bookId);
+            return {
+              ...b,
+              title: bookInfo?.title || 'Unknown',
+              author: bookInfo?.author || 'Unknown',
+              category: bookInfo?.category || 'Unknown',
+            };
+          })
+      );
+      
+      if(history.length > 0) {
+        const result = await recommendBooks({
+          history: history.map(({ title, author, category }) => ({ title, author, category })),
+          allBooks: allBooks.map(({ title, author, category }) => ({ title, author, category }))
+        });
+        setRecommendations(result.recommendations);
+      }
+
+    } catch (error) {
+      console.error("Failed to get recommendations:", error);
+    } finally {
+      setIsRecommendationsLoading(false);
+    }
+  }
+  
+  const latestBooks = useMemo(() => {
+      return [...allBooks].sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)).slice(0, 4);
+  }, [allBooks]);
+  
+  const popularBooks = useMemo(() => {
+    // Note: Popularity is just based on total copies in this mock data
+    return [...allBooks].sort((a,b) => b.totalCopies - a.totalCopies).slice(0, 4);
+  }, [allBooks])
+  
+  const recommendedBookDetails = useMemo(() => {
+     if(!recommendations.length) return [];
+     return recommendations.map(rec => {
+        const book = allBooks.find(b => b.title === rec.title && b.author === rec.author);
+        return book ? { ...book, reason: rec.reason } : null;
+     }).filter((b): b is BookType & { reason: string } => b !== null);
+  }, [recommendations, allBooks]);
+
 
   return (
     <div className="flex flex-col items-center">
@@ -63,18 +142,56 @@ export default function Home() {
           </div>
         </div>
       </section>
+      
+       {userProfile && userProfile.role === 'student' && (
+        <section className="w-full py-16 md:py-24">
+            <div className="container mx-auto px-4 md:px-6">
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h2 className="text-3xl font-bold font-headline text-primary">Recommended For You</h2>
+                    <p className="text-foreground/70">Based on your borrowing history.</p>
+                  </div>
+                  <Button onClick={fetchRecommendations} disabled={isRecommendationsLoading}>
+                    {isRecommendationsLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    <span className="ml-2 hidden sm:inline">Get Suggestions</span>
+                  </Button>
+                </div>
+                {isRecommendationsLoading ? (
+                    <div className="flex justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
+                ) : recommendedBookDetails.length > 0 ? (
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                     {recommendedBookDetails.map(book => (
+                       <Card key={book.id} className="flex flex-col">
+                          <BookCard {...book} />
+                          <CardContent>
+                              <CardDescription className="text-sm italic text-accent-foreground/80 mt-2">"{book.reason}"</CardDescription>
+                          </CardContent>
+                       </Card>
+                     ))}
+                   </div>
+                ) : (
+                    <div className="text-center py-8 px-4 border-2 border-dashed rounded-lg">
+                      <p className="font-semibold">No recommendations yet.</p>
+                      <p className="text-muted-foreground text-sm">Borrow and return some books, then click "Get Suggestions" to see personalized recommendations!</p>
+                    </div>
+                )}
+            </div>
+        </section>
+       )}
 
-      <section className="w-full py-16 md:py-24">
+      <section className="w-full py-16 md:py-24 bg-primary/5">
         <div className="container mx-auto px-4 md:px-6">
-          <h2 className="text-3xl font-bold text-center font-headline text-primary">Latest Additions</h2>
-          <p className="text-center mt-2 mb-8 text-foreground/70">Check out the newest books in our collection.</p>
+          <h2 className="text-3xl font-bold text-center font-headline text-primary">
+            {userProfile ? 'Popular Books' : 'Latest Additions'}
+          </h2>
+          <p className="text-center mt-2 mb-8 text-foreground/70">Check out the top books in our collection.</p>
           {isLoading ? (
              <div className="flex justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {latestBooks.map(book => (
+              {(userProfile ? popularBooks : latestBooks).map(book => (
                 <BookCard key={book.id} {...book} />
               ))}
             </div>

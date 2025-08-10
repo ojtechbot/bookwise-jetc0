@@ -79,7 +79,7 @@ export default function RegisterPage() {
         uid: user.uid,
         name: data.fullName,
         email: user.email!,
-        role: data.role,
+        role: data.role as 'student' | 'staff',
         regNumber: data.regNumber || null,
       });
 

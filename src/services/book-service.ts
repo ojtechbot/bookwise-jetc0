@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where, writeBatch, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where, writeBatch, Timestamp, increment } from 'firebase/firestore';
 
 export interface Book {
     id: string;
@@ -47,10 +47,31 @@ export const getBook = async (id: string): Promise<Book | null> => {
 };
 
 // UPDATE
-export const updateBook = async (id: string, data: Partial<Book>) => {
-    const docRef = doc(db, 'books', id);
-    await updateDoc(docRef, data);
+export const updateBook = async (id: string, data: Partial<Omit<Book, 'id' | 'availableCopies'>>) => {
+    const bookRef = doc(db, 'books', id);
+    const bookSnap = await getDoc(bookRef);
+    if (!bookSnap.exists()) {
+        throw new Error("Book not found for update.");
+    }
+    const oldTotal = bookSnap.data().totalCopies;
+    const oldAvailable = bookSnap.data().availableCopies;
+    
+    // Recalculate available copies if total copies changes
+    const copyDiff = data.totalCopies !== undefined ? data.totalCopies - oldTotal : 0;
+    const newAvailable = oldAvailable + copyDiff;
+
+    if (newAvailable < 0) {
+        throw new Error("Cannot reduce total copies below the number of borrowed books.");
+    }
+
+    const updateData: Partial<Book> = { ...data };
+    if (copyDiff !== 0) {
+        updateData.availableCopies = newAvailable;
+    }
+
+    await updateDoc(bookRef, updateData);
 };
+
 
 // DELETE
 export const deleteBook = async (id: string) => {
@@ -80,7 +101,7 @@ export const borrowBook = async (bookId: string, userId: string) => {
     }
 
     // Decrement available copies
-    batch.update(bookRef, { availableCopies: bookDoc.data().availableCopies - 1 });
+    batch.update(bookRef, { availableCopies: increment(-1) });
 
     // Add to user's borrowed books list
     const dueDate = new Date();
@@ -119,7 +140,7 @@ export const returnBook = async (bookId: string, userId: string) => {
     }
 
     // Increment available copies
-    batch.update(bookRef, { availableCopies: bookDoc.data().availableCopies + 1 });
+    batch.update(bookRef, { availableCopies: increment(1) });
 
     // Update the book's status in the user's list
     borrowedBooks[bookToReturnIndex].status = 'returned';
@@ -128,4 +149,3 @@ export const returnBook = async (bookId: string, userId: string) => {
 
     await batch.commit();
 };
-
