@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, Briefcase, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { getUser, addUser } from "@/services/user-service";
 
@@ -38,6 +38,8 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const studentForm = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -162,8 +164,8 @@ export default function LoginPage() {
     <div className="container mx-auto flex items-center justify-center py-12 px-4 md:px-6 min-h-[calc(100vh-12rem)]">
       <Tabs defaultValue="student" className="w-full max-w-md">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="student">Student</TabsTrigger>
-          <TabsTrigger value="staff">Staff / Admin</TabsTrigger>
+          <TabsTrigger value="student"><User className="mr-2 h-4 w-4" />Student</TabsTrigger>
+          <TabsTrigger value="staff"><Briefcase className="mr-2 h-4 w-4" />Staff / Admin</TabsTrigger>
         </TabsList>
         <TabsContent value="student">
           <Card>
@@ -193,9 +195,21 @@ export default function LoginPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>PIN</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="****" {...field} disabled={isPending} />
-                        </FormControl>
+                        <div className="relative">
+                            <FormControl>
+                            <Input type={showPin ? "text" : "password"} placeholder="****" {...field} disabled={isPending} />
+                            </FormControl>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                onClick={() => setShowPin(!showPin)}
+                            >
+                                {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                <span className="sr-only">{showPin ? 'Hide PIN' : 'Show PIN'}</span>
+                            </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -240,9 +254,21 @@ export default function LoginPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} disabled={isPending} />
-                        </FormControl>
+                         <div className="relative">
+                            <FormControl>
+                                <Input type={showPassword ? "text" : "password"} {...field} disabled={isPending} />
+                            </FormControl>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                            </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
