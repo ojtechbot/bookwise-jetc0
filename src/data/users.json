@@ -5,6 +5,7 @@
     "name": "Admin User",
     "email": "admin@libroweb.io",
     "role": "admin",
+    "password": "admin123",
     "regNumber": null
   },
   {
@@ -12,6 +13,7 @@
     "name": "Librarian User",
     "email": "librarian@libroweb.io",
     "role": "librarian",
+    "password": "librarian123",
     "regNumber": null
   }
 ]
