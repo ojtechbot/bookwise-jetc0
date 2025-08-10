@@ -48,10 +48,7 @@ export default function DashboardPage() {
       if (user) {
         setUser(user);
       } else {
-        // Mock user for student dashboard, in real app you'd redirect
-        // For this example, we'll allow access but you can enforce login
-        // by uncommenting the line below.
-        // router.push('/login'); 
+        router.push('/login'); 
       }
       setIsLoading(false);
     });
@@ -102,13 +99,17 @@ export default function DashboardPage() {
     );
   }
 
+  if (!user) {
+    return null; // Redirecting...
+  }
+
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-4xl font-bold font-headline text-primary">Student Dashboard</h1>
-          <p className="text-lg text-muted-foreground">Welcome back, Alex.</p>
+          <p className="text-lg text-muted-foreground">Welcome back, {user.displayName || 'Student'}.</p>
         </div>
         <Button asChild variant="outline" className="mt-4 md:mt-0">
           <Link href="/dashboard/settings">

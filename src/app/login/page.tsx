@@ -11,7 +11,7 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { auth, signInWithEmailAndPassword } from "@/lib/firebase";
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -30,6 +30,9 @@ const staffFormSchema = z.object({
 type StudentFormValues = z.infer<typeof studentFormSchema>;
 type StaffFormValues = z.infer<typeof staffFormSchema>;
 
+const STUDENT_EMAIL_DOMAIN = 'student.libroweb.io';
+
+
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -45,14 +48,26 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
-  const onStudentSubmit: SubmitHandler<StudentFormValues> = (data) => {
-    console.log("Student login submitted", data);
-    // This is a placeholder for student login
-    toast({
-      title: "Login Successful",
-      description: "Welcome back, student!",
-    });
-    router.push('/dashboard');
+  const onStudentSubmit: SubmitHandler<StudentFormValues> = async (data) => {
+    setIsPending(true);
+    const studentEmail = `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
+    try {
+      await signInWithEmailAndPassword(auth, studentEmail, data.pin);
+       toast({
+        title: "Login Successful",
+        description: "Welcome back, student!",
+      });
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error("Student login failed:", error);
+       toast({
+        title: "Login Failed",
+        description: "Invalid registration number or PIN.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPending(false);
+    }
   };
 
   const onStaffSubmit: SubmitHandler<StaffFormValues> = async (data) => {
@@ -100,7 +115,7 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Registration Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., 20240001" {...field} />
+                          <Input placeholder="e.g., 20240001" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -113,13 +128,16 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>PIN</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="****" {...field} />
+                          <Input type="password" placeholder="****" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full">Login</Button>
+                  <Button type="submit" className="w-full" disabled={isPending}>
+                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Login
+                  </Button>
                 </form>
               </Form>
               <p className="mt-4 text-center text-sm text-muted-foreground">
@@ -144,7 +162,7 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="name@example.com" {...field} />
+                          <Input type="email" placeholder="name@example.com" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -157,7 +175,7 @@ export default function LoginPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" {...field} />
+                          <Input type="password" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

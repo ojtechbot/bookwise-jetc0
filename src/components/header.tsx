@@ -18,10 +18,12 @@ export function Header() {
   const { toast } = useToast();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isStudent, setIsStudent] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setIsStudent(!!user?.email?.endsWith('@student.libroweb.io'));
       setIsLoading(false);
     });
     return () => unsubscribe();
@@ -70,8 +72,8 @@ export function Header() {
               <nav className="grid gap-6 text-lg font-medium p-4">
                 <Link href="/" className="hover:text-primary transition-colors">Home</Link>
                 <Link href="/search" className="hover:text-primary transition-colors">Search</Link>
-                {isLoggedIn && <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>}
-                {isLoggedIn && <Link href="/admin" className="hover:text-primary transition-colors">Admin</Link>}
+                {isLoggedIn && isStudent && <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>}
+                {isLoggedIn && !isStudent && <Link href="/admin" className="hover:text-primary transition-colors">Admin</Link>}
               </nav>
             </SheetContent>
           </Sheet>
@@ -83,8 +85,8 @@ export function Header() {
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/" className="text-foreground/70 hover:text-primary transition-colors">Home</Link>
           <Link href="/search" className="text-foreground/70 hover:text-primary transition-colors">Search</Link>
-          {isLoggedIn && <Link href="/dashboard" className="text-foreground/70 hover:text-primary transition-colors">Dashboard</Link>}
-           {isLoggedIn && user?.email && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
+          {isLoggedIn && isStudent && <Link href="/dashboard" className="text-foreground/70 hover:text-primary transition-colors">Dashboard</Link>}
+           {isLoggedIn && !isStudent && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
         </nav>
         <div className="flex items-center gap-4 ml-auto">
           {isLoading ? null : isLoggedIn ? (
@@ -102,13 +104,15 @@ export function Header() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.displayName || "User"}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                    <p className="text-sm font-medium leading-none">{user.displayName || (isStudent ? 'Student' : 'Staff')}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {isStudent ? user.email?.split('@')[0] : user.email}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings" className="flex items-center cursor-pointer">
+                  <Link href={isStudent ? "/dashboard/settings" : "/admin"} className="flex items-center cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>

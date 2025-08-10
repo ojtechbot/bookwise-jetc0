@@ -21,9 +21,9 @@ const books = [
 ];
 
 const users = [
-  { id: '1', name: 'Alex Johnson', email: 'alex@example.com', role: 'Student' },
-  { id: '2', name: 'Maria Garcia', email: 'maria@example.com', role: 'Student' },
-  { id: '3', name: 'Dr. Evelyn Reed', email: 'e.reed@example.com', role: 'Staff' },
+  { id: '1', name: 'Admin User', email: 'admin@libroweb.io', role: 'Admin' },
+  { id: '2', name: 'Librarian User', email: 'librarian@libroweb.io', role: 'Librarian' },
+  { id: '3', name: 'Alex Johnson', email: '20240001@student.libroweb.io', role: 'Student' },
 ];
 
 const chartData = [
@@ -55,7 +55,12 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setUser(user);
+        // Simple check if user is staff/admin based on email domain
+        if (user.email && !user.email.endsWith('@student.libroweb.io')) {
+           setUser(user);
+        } else {
+           router.push('/dashboard'); // Redirect students
+        }
       } else {
         router.push('/login');
       }
@@ -179,7 +184,9 @@ export default function AdminDashboardPage() {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell><Badge variant={user.role === 'Staff' ? 'default' : 'outline'}>{user.role}</Badge></TableCell>
+                       <TableCell>
+                        <Badge variant={user.role.includes('Admin') || user.role.includes('Librarian') ? 'default' : 'outline'}>{user.role}</Badge>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" className="mr-2">Edit</Button>
                         <Button variant="destructive" size="sm">Delete</Button>

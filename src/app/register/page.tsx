@@ -19,16 +19,31 @@ import { useState } from "react";
 
 const registerFormSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters."),
-  email: z.string().email("Invalid email address."),
+  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
+  regNumber: z.string().optional().or(z.literal('')),
   role: z.enum(["student", "staff"], { required_error: "You must select a role." }),
   password: z.string().min(6, "Password must be at least 6 characters."),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match.",
   path: ["confirmPassword"],
+}).refine((data) => {
+    if (data.role === 'staff') return !!data.email;
+    return true;
+}, {
+    message: "Email is required for staff members.",
+    path: ["email"],
+}).refine((data) => {
+    if (data.role === 'student') return !!data.regNumber;
+    return true;
+}, {
+    message: "Registration number is required for students.",
+    path: ["regNumber"],
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
+
+const STUDENT_EMAIL_DOMAIN = 'student.libroweb.io';
 
 export default function RegisterPage() {
   const { toast } = useToast();
@@ -40,36 +55,39 @@ export default function RegisterPage() {
     defaultValues: {
       fullName: "",
       email: "",
+      regNumber: "",
       password: "",
       confirmPassword: "",
     }
   });
 
+  const selectedRole = form.watch("role");
+
   const onSubmit: SubmitHandler<RegisterFormValues> = async (data) => {
     setIsPending(true);
     try {
-      // In a real app, you would handle student vs staff registration differently.
-      // For now, we'll only implement staff registration with Firebase Auth.
       if (data.role === 'staff') {
+        if (!data.email) throw new Error("Email is required for staff.");
         await createUserWithEmailAndPassword(auth, data.email, data.password);
         toast({
           title: "Registration Successful",
           description: "Your staff account has been created. Please log in.",
         });
-        router.push('/login');
-      } else {
-        // Placeholder for student registration
-         toast({
-          title: "Registration Submitted",
-          description: "Your student registration is being processed.",
+      } else { // Student registration
+        if (!data.regNumber) throw new Error("Registration Number is required for students.");
+        const studentEmail = `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
+        await createUserWithEmailAndPassword(auth, studentEmail, data.password);
+        toast({
+          title: "Registration Successful",
+          description: "Your student account has been created. Please log in.",
         });
-        router.push('/login');
       }
+      router.push('/login');
     } catch (error: any) {
       console.error("Registration failed:", error);
       toast({
         title: "Registration Failed",
-        description: error.message || "An unexpected error occurred.",
+        description: error.code === 'auth/email-already-in-use' ? 'This account already exists.' : (error.message || "An unexpected error occurred."),
         variant: "destructive",
       });
     } finally {
@@ -100,19 +118,7 @@ export default function RegisterPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="john.doe@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
               <FormField
                 control={form.control}
                 name="role"
@@ -134,12 +140,45 @@ export default function RegisterPage() {
                   </FormItem>
                 )}
               />
+
+              {selectedRole === 'staff' && (
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john.doe@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {selectedRole === 'student' && (
+                <FormField
+                  control={form.control}
+                  name="regNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Registration Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 20240001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{selectedRole === 'student' ? 'PIN (must be at least 6 characters)' : 'Password'}</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -152,7 +191,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>{selectedRole === 'student' ? 'Confirm PIN' : 'Confirm Password'}</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
