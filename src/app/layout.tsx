@@ -1,6 +1,4 @@
 
-'use client';
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/header';
@@ -36,8 +34,6 @@ function AppContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-// This RootLayout is now a Client Component because AppContent uses client-side hooks.
-// It's better to keep the main export of a layout/page as the client component if it depends on client-side logic.
 export default function RootLayout({
   children,
 }: Readonly<{
