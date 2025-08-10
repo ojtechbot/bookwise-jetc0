@@ -1,9 +1,21 @@
-import { Book, Clock, HelpCircle, History, Settings } from 'lucide-react';
+
+'use client';
+
+import { Book, Clock, HelpCircle, History, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useTransition } from 'react';
+import { requestBook } from '@/ai/flows/request-book-flow';
+import { useToast } from '@/hooks/use-toast';
 
 const borrowedBooks = [
   { id: '1', title: 'The Midnight Library', author: 'Matt Haig', dueDate: '2024-08-15' },
@@ -15,7 +27,52 @@ const historyBooks = [
   { id: '4', title: 'The Vanishing Half', author: 'Brit Bennett', returnDate: '2024-07-11' },
 ];
 
+const requestFormSchema = z.object({
+  title: z.string().min(3, { message: 'Book title must be at least 3 characters.' }),
+  reason: z.string().min(10, { message: 'Please provide a reason of at least 10 characters.' }),
+});
+
+
 export default function DashboardPage() {
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof requestFormSchema>>({
+    resolver: zodResolver(requestFormSchema),
+    defaultValues: {
+      title: "",
+      reason: "",
+    },
+  });
+
+  const onSubmit = (values: z.infer<typeof requestFormSchema>) => {
+    startTransition(async () => {
+      try {
+        const result = await requestBook(values);
+        if (result.success) {
+          toast({
+            title: "Request Submitted",
+            description: result.message,
+          });
+          form.reset();
+        } else {
+           toast({
+            title: "Request Failed",
+            description: result.message,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to submit request:", error);
+         toast({
+            title: "An Error Occurred",
+            description: "Could not submit your book request. Please try again later.",
+            variant: "destructive",
+          });
+      }
+    });
+  }
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
@@ -107,9 +164,44 @@ export default function DashboardPage() {
               <CardTitle>Request a New Book</CardTitle>
               <CardDescription>Can't find a book you're looking for? Request it here!</CardDescription>
             </CardHeader>
-            <CardContent className="text-center py-12">
-              <p className="text-muted-foreground mb-4">This feature is coming soon.</p>
-              <Button disabled>Request Book</Button>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                   <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Book Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 'The Lord of the Rings'" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="reason"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reason for Request</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="e.g., 'This book is essential for my research project on...' (optional)"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={isPending}>
+                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Submit Request
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
