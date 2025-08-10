@@ -3,17 +3,20 @@
 /**
  * @fileOverview A Genkit flow for handling student book requests.
  *
- * - requestBook - A function that takes a book title and reason, and simulates a request.
+ * - requestBook - A function that takes a book title and reason, and saves the request.
  * - RequestBookInput - The input type for the requestBook function.
  * - RequestBookOutput - The return type for the requestBook function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { createBookRequest } from '@/services/book-service';
 
 const RequestBookInputSchema = z.object({
   title: z.string().describe('The title of the book being requested.'),
   reason: z.string().describe('The reason why the student is requesting this book.'),
+  userId: z.string().describe("The ID of the user making the request."),
+  userName: z.string().describe("The name of the user making the request."),
 });
 export type RequestBookInput = z.infer<typeof RequestBookInputSchema>;
 
@@ -34,12 +37,23 @@ const requestBookFlow = ai.defineFlow(
     outputSchema: RequestBookOutputSchema,
   },
   async (input) => {
-    console.log(`Book request received for "${input.title}". Reason: ${input.reason}`);
-    // In a real application, you would save this request to a database.
-    // For this example, we'll just simulate a successful submission.
-    return {
-      success: true,
-      message: `Your request for "${input.title}" has been submitted successfully. You will be notified when it is available.`,
-    };
+    try {
+        await createBookRequest({
+            title: input.title,
+            reason: input.reason,
+            userId: input.userId,
+            userName: input.userName,
+        });
+        return {
+          success: true,
+          message: `Your request for "${input.title}" has been submitted successfully.`,
+        };
+    } catch (error) {
+        console.error('Failed to create book request:', error);
+        return {
+            success: false,
+            message: 'There was an error submitting your request. Please try again later.'
+        }
+    }
   }
 );

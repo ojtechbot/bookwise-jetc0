@@ -29,7 +29,18 @@ export interface ReviewData {
     comment: string;
 }
 
+export interface BookRequest {
+    id?: string;
+    title: string;
+    reason: string;
+    userId: string;
+    userName: string;
+    createdAt: Timestamp;
+    status: 'pending' | 'archived';
+}
+
 const booksCollection = collection(db, 'books');
+const requestsCollection = collection(db, 'bookRequests');
 
 // CREATE
 export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availableCopies' | 'reviewCount' | 'averageRating'>): Promise<string> => {
@@ -228,6 +239,29 @@ export const getReviews = async (bookId: string) => {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
+// Book Request Functions
+export const createBookRequest = async (requestData: Omit<BookRequest, 'id' | 'createdAt' | 'status'>): Promise<string> => {
+    const newRequestData = {
+        ...requestData,
+        createdAt: Timestamp.now(),
+        status: 'pending' as const,
+    };
+    const docRef = await addDoc(requestsCollection, newRequestData);
+    await updateDoc(docRef, { id: docRef.id });
+    return docRef.id;
+};
+
+export const getBookRequests = async (status: 'pending' | 'archived' = 'pending'): Promise<BookRequest[]> => {
+    const q = query(requestsCollection, where('status', '==', status), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => doc.data() as BookRequest);
+};
+
+export const archiveBookRequest = async (id: string) => {
+    const requestRef = doc(requestsCollection, id);
+    await updateDoc(requestRef, { status: 'archived' });
+};
+
 
 // Helper to seed database from JSON
 export const seedInitialBooks = async () => {
@@ -246,3 +280,4 @@ export const seedInitialBooks = async () => {
         console.error("Error seeding initial books: ", error);
     }
 };
+

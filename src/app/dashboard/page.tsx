@@ -42,7 +42,7 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isStudent, isLoading: isAuthLoading } = useAuth();
+  const { user, userProfile, isStudent, isLoading: isAuthLoading } = useAuth();
   const [borrowedBooks, setBorrowedBooks] = useState<PopulatedBorrowedBook[]>([]);
   const [historyBooks, setHistoryBooks] = useState<PopulatedBorrowedBook[]>([]);
   const [isBookDataLoading, setIsBookDataLoading] = useState(true);
@@ -110,9 +110,14 @@ export default function DashboardPage() {
   });
 
   const onSubmit = (values: z.infer<typeof requestFormSchema>) => {
+    if (!user || !userProfile) return;
     startRequestTransition(async () => {
       try {
-        const result = await requestBook(values);
+        const result = await requestBook({
+            ...values,
+            userId: user.uid,
+            userName: userProfile.name,
+        });
         if (result.success) {
           toast({
             title: "Request Submitted",

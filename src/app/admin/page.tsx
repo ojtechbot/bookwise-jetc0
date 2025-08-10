@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Loader2, PlusCircle, Book, Users, BarChart } from 'lucide-react';
+import { Loader2, PlusCircle, Book, Users, BarChart, FileQuestion, Archive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,13 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
-import { getBooks, type Book as BookType } from '@/services/book-service';
+import { useEffect, useState, useMemo, useTransition } from 'react';
+import { getBooks, type Book as BookType, getBookRequests, type BookRequest, archiveBookRequest } from '@/services/book-service';
 import { AddBookDialog } from '@/app/add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
 import { DeleteBookDialog } from '@/components/delete-book-dialog';
 import { getUsers, UserProfile } from '@/services/user-service';
 import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 const chartData = [
     { month: 'January', borrows: 186, signups: 80 },
@@ -40,13 +42,21 @@ export default function AdminDashboardPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [books, setBooks] = useState<BookType[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [requests, setRequests] = useState<BookRequest[]>([]);
+  const [isArchivePending, startArchiveTransition] = useTransition();
+  const { toast } = useToast();
 
   const fetchData = async () => {
     setIsDataLoading(true);
     try {
-      const [booksData, usersData] = await Promise.all([getBooks(), getUsers()]);
+      const [booksData, usersData, requestsData] = await Promise.all([
+        getBooks(), 
+        getUsers(),
+        getBookRequests()
+      ]);
       setBooks(booksData);
       setUsers(usersData);
+      setRequests(requestsData);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -72,6 +82,19 @@ export default function AdminDashboardPage() {
     return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: COLORS[index % COLORS.length] }));
   }, [books]);
 
+  const handleArchiveRequest = (id: string) => {
+    startArchiveTransition(async () => {
+        try {
+            await archiveBookRequest(id);
+            toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
+            setRequests(prev => prev.filter(r => r.id !== id));
+        } catch (error) {
+            console.error("Failed to archive request", error);
+            toast({ title: "Error", description: "Could not archive the request.", variant: "destructive" });
+        }
+    });
+  }
+
   if (isLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -93,7 +116,7 @@ export default function AdminDashboardPage() {
             </Button>
         </AddBookDialog>
       </header>
-       <section className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+       <section className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Books</CardTitle>
@@ -114,6 +137,16 @@ export default function AdminDashboardPage() {
                    <p className="text-xs text-muted-foreground">{users.filter(u => u.role === 'student').length} students, {users.filter(u => u.role !== 'student').length} staff</p>
               </CardContent>
           </Card>
+           <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                    <FileQuestion className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : requests.length}</div>
+                    <p className="text-xs text-muted-foreground">new book requests from students</p>
+                </CardContent>
+           </Card>
            <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Monthly Activity</CardTitle>
@@ -184,9 +217,10 @@ export default function AdminDashboardPage() {
       </section>
 
       <Tabs defaultValue="books">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="books"><Book className="mr-2 h-4 w-4" />Book Management</TabsTrigger>
           <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" />User Management</TabsTrigger>
+          <TabsTrigger value="requests"><FileQuestion className="mr-2 h-4 w-4" />Book Requests</TabsTrigger>
         </TabsList>
         <TabsContent value="books" className="mt-6">
           <Card>
@@ -270,6 +304,55 @@ export default function AdminDashboardPage() {
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+         <TabsContent value="requests" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Student Book Requests</CardTitle>
+              <CardDescription>View and manage book requests submitted by students.</CardDescription>
+            </CardHeader>
+            <CardContent>
+               {isDataLoading ? (
+                 <div className="flex justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                 </div>
+              ) : (
+                <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Book Title</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Reason</TableHead>
+                       <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requests.length > 0 ? requests.map((request) => (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">{request.title}</TableCell>
+                        <TableCell>{request.userName}</TableCell>
+                        <TableCell className="max-w-xs truncate">{request.reason}</TableCell>
+                        <TableCell>{formatDistanceToNow(request.createdAt.toDate(), { addSuffix: true })}</TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)} disabled={isArchivePending}>
+                                {isArchivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                                <span className="sr-only">Archive</span>
+                            </Button>
+                        </TableCell>
+                      </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">No pending book requests.</TableCell>
+                        </TableRow>
+                    )}
                   </TableBody>
                 </Table>
                 </div>
