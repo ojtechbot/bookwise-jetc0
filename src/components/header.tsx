@@ -8,27 +8,16 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { onAuthStateChanged, signOut, type User as FirebaseUser } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 export function Header() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isStudent, setIsStudent] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsStudent(!!user?.email?.endsWith('@student.libroweb.io'));
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
+  const { user, isStudent, isLoading } = useAuth();
+  
   const handleLogout = async () => {
     try {
       await signOut(auth);

@@ -8,10 +8,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { BookCard } from "@/components/book-card";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
-import { getBooks, Book as BookType } from "@/services/book-service";
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { getUser, type UserProfile, type BorrowedBook } from '@/services/user-service';
+import { getBooks, getBook, Book as BookType } from "@/services/book-service";
+import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
 
 
@@ -24,22 +22,16 @@ const categories = [
   { name: 'Technology', icon: Tag },
 ];
 
-type PopulatedBorrowedBook = BorrowedBook & {
-  title: string;
-  author: string;
-  category: string;
-};
-
 export default function Home() {
   const [allBooks, setAllBooks] = useState<BookType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
 
   useEffect(() => {
     const fetchInitialData = async () => {
+      setIsLoading(true);
       try {
         const books = await getBooks();
         setAllBooks(books);
@@ -50,18 +42,6 @@ export default function Home() {
       }
     };
     fetchInitialData();
-    
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        setUser(user);
-        if(user) {
-            const profile = await getUser(user.uid);
-            setUserProfile(profile);
-        } else {
-            setUserProfile(null);
-        }
-    });
-    
-    return () => unsubscribe();
   }, []);
 
   const fetchRecommendations = async () => {
@@ -71,13 +51,12 @@ export default function Home() {
 
     setIsRecommendationsLoading(true);
     try {
-      const history: PopulatedBorrowedBook[] = await Promise.all(
+      const history = await Promise.all(
         userProfile.borrowedBooks
           .filter(b => b.status === 'returned')
           .map(async (b) => {
             const bookInfo = await getBook(b.bookId);
             return {
-              ...b,
               title: bookInfo?.title || 'Unknown',
               author: bookInfo?.author || 'Unknown',
               category: bookInfo?.category || 'Unknown',

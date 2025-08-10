@@ -12,12 +12,13 @@ import { useState, useTransition, useEffect } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
 import { getBook, borrowBook, returnBook, type Book } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
 import { getUser, type UserProfile } from '@/services/user-service';
+import { useAuth } from '@/context/auth-context';
 
 export default function BookDetailsPage({ params }: { params: { id: string } }) {
   const [book, setBook] = useState<Book | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { user, userProfile, isLoading: isAuthLoading } = useAuth();
+  const [localUserProfile, setLocalUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSummaryPending, startSummaryTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
@@ -25,18 +26,11 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchBookAndUser = async () => {
+    const fetchBook = async () => {
       setIsLoading(true);
       try {
         const bookData = await getBook(params.id);
         setBook(bookData);
-
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-            const profile = await getUser(currentUser.uid);
-            setUserProfile(profile);
-        }
-
       } catch (error) {
         console.error("Failed to fetch book data:", error);
         setBook(null);
@@ -44,8 +38,13 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
         setIsLoading(false);
       }
     };
-    fetchBookAndUser();
+    fetchBook();
   }, [params.id]);
+  
+  useEffect(() => {
+    setLocalUserProfile(userProfile);
+  },[userProfile])
+
 
   const handleGenerateSummary = () => {
     if (!book) return;
@@ -61,14 +60,14 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   };
 
   const handleBorrow = () => {
-    if (!book || !auth.currentUser) return;
+    if (!book || !user) return;
     startActionTransition(async () => {
         try {
-            await borrowBook(book.id, auth.currentUser.uid);
+            await borrowBook(book.id, user.uid);
             const updatedBook = await getBook(book.id);
-            const updatedProfile = await getUser(auth.currentUser.uid);
+            const updatedProfile = await getUser(user.uid);
             setBook(updatedBook);
-            setUserProfile(updatedProfile);
+            setLocalUserProfile(updatedProfile);
             toast({ title: 'Success!', description: `You have borrowed "${book.title}".` });
         } catch (error: any) {
             console.error("Failed to borrow book:", error);
@@ -78,14 +77,14 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   };
 
   const handleReturn = () => {
-     if (!book || !auth.currentUser) return;
+     if (!book || !user) return;
     startActionTransition(async () => {
         try {
-            await returnBook(book.id, auth.currentUser.uid);
+            await returnBook(book.id, user.uid);
             const updatedBook = await getBook(book.id);
-            const updatedProfile = await getUser(auth.currentUser.uid);
+            const updatedProfile = await getUser(user.uid);
             setBook(updatedBook);
-            setUserProfile(updatedProfile);
+            setLocalUserProfile(updatedProfile);
             toast({ title: 'Success!', description: `You have returned "${book.title}".` });
         } catch (error: any) {
             console.error("Failed to return book:", error);
@@ -94,7 +93,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     });
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -113,7 +112,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     );
   }
   
-  const isBorrowedByUser = userProfile?.borrowedBooks?.some(b => b.bookId === book.id);
+  const isBorrowedByUser = localUserProfile?.borrowedBooks?.some(b => b.bookId === book.id && b.status === 'borrowed');
   const isAvailable = book.availableCopies > 0;
 
   return (
@@ -198,4 +197,3 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
     </div>
   );
 }
-

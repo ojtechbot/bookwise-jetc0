@@ -9,8 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { getBooks, type Book as BookType } from '@/services/book-service';
@@ -18,6 +16,7 @@ import { AddBookDialog } from '@/components/add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
 import { DeleteBookDialog } from '@/components/delete-book-dialog';
 import { getUsers, UserProfile } from '@/services/user-service';
+import { useAuth } from '@/context/auth-context';
 
 const chartData = [
     { month: 'January', borrows: 186, signups: 80 },
@@ -37,8 +36,7 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isStudent, isLoading } = useAuth();
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [books, setBooks] = useState<BookType[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -55,23 +53,16 @@ export default function AdminDashboardPage() {
       setIsDataLoading(false);
     }
   }
-
+  
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        if (user.email && !user.email.endsWith('@student.libroweb.io')) {
-           setUser(user);
-           fetchData();
-        } else {
-           router.push('/dashboard');
-        }
+    if (!isLoading) {
+      if (user && !isStudent) {
+        fetchData();
       } else {
-        router.push('/login');
+        router.push(isStudent ? '/dashboard' : '/login');
       }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
+    }
+  }, [user, isStudent, isLoading, router]);
   
   const categoryData = useMemo(() => {
     const counts: { [key: string]: number } = {};
@@ -83,7 +74,7 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );

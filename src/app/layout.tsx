@@ -7,9 +7,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { Preloader } from '@/components/preloader';
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { AuthProvider, useAuth } from '@/context/auth-context';
 
 const metadata: Metadata = {
   title: 'Libroweb',
@@ -19,20 +17,30 @@ const metadata: Metadata = {
   },
 };
 
+function AppContent({ children }: { children: React.ReactNode }) {
+  const { isLoading } = useAuth();
+
+  return (
+    <>
+      {isLoading ? (
+        <Preloader />
+      ) : (
+        <>
+          <Header />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+          <Toaster />
+        </>
+      )}
+    </>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isInitializing, setIsInitializing] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, () => {
-      setIsInitializing(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -41,16 +49,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
-        {isInitializing ? (
-          <Preloader />
-        ) : (
-          <>
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-            <Toaster />
-          </>
-        )}
+        <AuthProvider>
+          <AppContent>{children}</AppContent>
+        </AuthProvider>
       </body>
     </html>
   );

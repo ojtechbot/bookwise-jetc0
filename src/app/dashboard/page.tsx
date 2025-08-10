@@ -16,14 +16,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useTransition, useEffect, useMemo } from 'react';
 import { requestBook } from '@/ai/flows/request-book-flow';
 import { useToast } from '@/hooks/use-toast';
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { getUser, type UserProfile, type BorrowedBook } from '@/services/user-service';
-import { getBook, type Book as BookInfo } from '@/services/book-service';
+import { type BorrowedBook } from '@/services/user-service';
+import { getBook } from '@/services/book-service';
 import { format } from 'date-fns';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { useAuth } from '@/context/auth-context';
 
 
 type PopulatedBorrowedBook = BorrowedBook & {
@@ -41,39 +40,46 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { user, userProfile, isStudent, isLoading } = useAuth();
   const [borrowedBooks, setBorrowedBooks] = useState<PopulatedBorrowedBook[]>([]);
   const [historyBooks, setHistoryBooks] = useState<PopulatedBorrowedBook[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isBookDataLoading, setIsBookDataLoading] = useState(true);
   const [isRequestPending, startRequestTransition] = useTransition();
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-        const profile = await getUser(user.uid);
-        setUserProfile(profile);
-
-        if (profile?.borrowedBooks) {
-           const populatedBooks = await Promise.all(
-               profile.borrowedBooks.map(async (b) => {
-                   const bookInfo = await getBook(b.bookId);
-                   return { ...b, title: bookInfo?.title || 'Unknown', author: bookInfo?.author || 'Unknown', category: bookInfo?.category || 'Unknown' };
-               })
-           );
-           setBorrowedBooks(populatedBooks.filter(b => b.status === 'borrowed'));
-           setHistoryBooks(populatedBooks.filter(b => b.status === 'returned'));
-        }
-
-      } else {
-        router.push('/login'); 
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (!isStudent) {
+        router.push('/admin');
       }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
+    }
+  }, [user, isStudent, isLoading, router]);
+
+  useEffect(() => {
+    const populateBookDetails = async () => {
+      if (userProfile?.borrowedBooks) {
+         setIsBookDataLoading(true);
+         const populatedBooks = await Promise.all(
+             userProfile.borrowedBooks.map(async (b) => {
+                 const bookInfo = await getBook(b.bookId);
+                 return { ...b, title: bookInfo?.title || 'Unknown', author: bookInfo?.author || 'Unknown', category: bookInfo?.category || 'Unknown' };
+             })
+         );
+         setBorrowedBooks(populatedBooks.filter(b => b.status === 'borrowed'));
+         setHistoryBooks(populatedBooks.filter(b => b.status === 'returned'));
+         setIsBookDataLoading(false);
+      } else {
+        setBorrowedBooks([]);
+        setHistoryBooks([]);
+        setIsBookDataLoading(false);
+      }
+    };
+    if (userProfile) {
+        populateBookDetails();
+    }
+  }, [userProfile]);
 
   const form = useForm<z.infer<typeof requestFormSchema>>({
     resolver: zodResolver(requestFormSchema),
@@ -121,7 +127,7 @@ export default function DashboardPage() {
   }, [historyBooks]);
   
 
-  if (isLoading) {
+  if (isLoading || isBookDataLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -129,7 +135,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
+  if (!user || !userProfile) {
     return null; // Redirecting...
   }
 

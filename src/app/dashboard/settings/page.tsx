@@ -14,9 +14,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { auth, updateProfile } from '@/lib/firebase';
+import { updateProfile } from "firebase/auth";
 import { useToast } from '@/hooks/use-toast';
-import { getUser, updateUser, type UserProfile } from '@/services/user-service';
+import { updateUser } from '@/services/user-service';
+import { useAuth } from '@/context/auth-context';
+import { auth } from '@/lib/firebase';
 
 const profileFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
@@ -24,12 +26,11 @@ const profileFormSchema = z.object({
 });
 
 export default function SettingsPage() {
+  const { user, userProfile, isLoading } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isAvatarPending, startAvatarTransition] = useTransition();
   const [isProfilePending, startProfileTransition] = useTransition();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
@@ -38,17 +39,13 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        setAvatarUrl(user.photoURL);
-        const profile = await getUser(user.uid);
-        setUserProfile(profile);
-        form.reset({ name: profile?.name || '', email: profile?.email || '' });
-      }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [form]);
+    if (user) {
+      setAvatarUrl(user.photoURL);
+    }
+    if (userProfile) {
+      form.reset({ name: userProfile.name || '', email: userProfile.email || '' });
+    }
+  }, [user, userProfile, form]);
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -64,7 +61,7 @@ export default function SettingsPage() {
   };
 
   const handleGenerateAvatar = () => {
-    if (!prompt) return;
+    if (!prompt || !auth.currentUser) return;
     startAvatarTransition(async () => {
       try {
         const result = await generateAvatar({ prompt });
@@ -81,11 +78,11 @@ export default function SettingsPage() {
   };
 
   const onSubmit = (values: z.infer<typeof profileFormSchema>) => {
-    if (!auth.currentUser) return;
+    if (!user) return;
     startProfileTransition(async () => {
       try {
-        await updateUser(auth.currentUser.uid, { name: values.name });
-        await updateProfile(auth.currentUser, { displayName: values.name });
+        await updateUser(user.uid, { name: values.name });
+        await updateProfile(user, { displayName: values.name });
         toast({ title: 'Profile Updated!', description: 'Your changes have been saved successfully.' });
       } catch (error) {
         console.error('Failed to update profile:', error);
@@ -220,4 +217,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
