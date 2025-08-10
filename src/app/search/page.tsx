@@ -51,6 +51,20 @@ export default function SearchPage({ searchParams }: { searchParams?: { [key: st
               </SelectContent>
             </Select>
           </div>
+           <div className="w-full sm:w-1/3">
+            <Label htmlFor="category-filter">Category</Label>
+            <Select>
+              <SelectTrigger id="category-filter">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fiction">Fiction</SelectItem>
+                <SelectItem value="sci-fi">Sci-Fi</SelectItem>
+                <SelectItem value="classic">Classic Literature</SelectItem>
+                <SelectItem value="fantasy">Fantasy</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 

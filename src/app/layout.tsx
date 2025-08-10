@@ -3,6 +3,7 @@ import './globals.css';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Toaster } from '@/components/ui/toaster';
+import { Preloader } from '@/components/preloader';
 
 export const metadata: Metadata = {
   title: 'Libroweb',
@@ -26,6 +27,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
+        <Preloader />
         <Header />
         <main className="flex-grow">{children}</main>
         <Footer />
