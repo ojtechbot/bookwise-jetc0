@@ -280,4 +280,3 @@ export const seedInitialBooks = async () => {
         console.error("Error seeding initial books: ", error);
     }
 };
-
