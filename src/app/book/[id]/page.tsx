@@ -15,8 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList, type Review } from '@/components/review-list';
+import { useParams } from 'next/navigation';
 
-export default function BookDetailsPage({ params }: { params: { id: string } }) {
+export default function BookDetailsPage() {
+  const params = useParams<{ id: string }>();
   const [book, setBook] = useState<Book | null>(null);
   const { user, userProfile, isLoading: isAuthLoading, refreshUserProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +29,7 @@ export default function BookDetailsPage({ params }: { params: { id: string } }) 
   const { toast } = useToast();
 
   const fetchBookAndReviews = useCallback(async () => {
+      if (!params.id) return;
       setIsLoading(true);
       try {
         const [bookData, reviewsData] = await Promise.all([
