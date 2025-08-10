@@ -101,7 +101,7 @@ export default function Home() {
     <div className="flex flex-col items-center">
       <section className="w-full bg-primary/10 py-20 md:py-32">
         <div className="container mx-auto px-4 md:px-6 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold font-headline tracking-tight text-primary">Welcome to Libroweb</h1>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-primary">Welcome to Libroweb</h1>
           <p className="mt-4 max-w-3xl mx-auto text-lg md:text-xl text-foreground/80">
             Your digital gateway to a universe of knowledge. Discover, borrow, and read from our vast collection of ebooks.
           </p>
@@ -111,7 +111,7 @@ export default function Home() {
                 type="search"
                 name="q"
                 placeholder="Search for books, authors, or subjects..."
-                className="flex-grow text-base bg-card"
+                className="flex-grow bg-card"
                 aria-label="Search"
               />
               <Button type="submit" size="lg" aria-label="Search">
@@ -125,9 +125,9 @@ export default function Home() {
        {userProfile && userProfile.role === 'student' && (
         <section className="w-full py-16 md:py-24">
             <div className="container mx-auto px-4 md:px-6">
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h2 className="text-3xl font-bold font-headline text-primary">Recommended For You</h2>
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                  <div className="text-center sm:text-left">
+                    <h2 className="text-3xl font-bold text-primary">Recommended For You</h2>
                     <p className="text-foreground/70">Based on your borrowing history.</p>
                   </div>
                   <Button onClick={fetchRecommendations} disabled={isRecommendationsLoading}>
@@ -160,7 +160,7 @@ export default function Home() {
 
       <section className="w-full py-16 md:py-24 bg-primary/5">
         <div className="container mx-auto px-4 md:px-6">
-          <h2 className="text-3xl font-bold text-center font-headline text-primary">
+          <h2 className="text-3xl font-bold text-center text-primary">
             {userProfile ? 'Popular Books' : 'Latest Additions'}
           </h2>
           <p className="text-center mt-2 mb-8 text-foreground/70">Check out the top books in our collection.</p>
@@ -180,7 +180,7 @@ export default function Home() {
 
       <section className="w-full bg-primary/10 py-16 md:py-24">
         <div className="container mx-auto px-4 md:px-6">
-          <h2 className="text-3xl font-bold text-center font-headline text-primary">Browse by Category</h2>
+          <h2 className="text-3xl font-bold text-center text-primary">Browse by Category</h2>
           <p className="text-center mt-2 mb-8 text-foreground/70">Explore books from your favorite genres.</p>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {categories.map((category) => (
@@ -190,7 +190,7 @@ export default function Home() {
                     <div className="flex justify-center mb-2">
                       <category.icon className="w-10 h-10 text-accent group-hover:text-primary transition-colors" />
                     </div>
-                    <CardTitle className="text-lg font-semibold">{category.name}</CardTitle>
+                    <CardTitle className="text-lg font-medium">{category.name}</CardTitle>
                   </CardHeader>
                 </Card>
               </Link>

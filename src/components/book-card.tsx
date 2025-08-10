@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -27,7 +28,7 @@ export function BookCard({ id, title, author, coverUrl, hint }: BookCardProps) {
         </Link>
       </CardHeader>
       <CardContent className="flex-grow p-4">
-        <CardTitle className="text-lg font-headline">
+        <CardTitle className="text-lg font-medium">
           <Link href={`/book/${id}`} className="hover:text-primary transition-colors">
             {title}
           </Link>

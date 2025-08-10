@@ -87,14 +87,14 @@ export default function SearchPage() {
     });
   }, [allBooks, query, author, category]);
 
-  const uniqueAuthors = useMemo(() => [...new Set(allBooks.map(book => book.author))], [allBooks]);
-  const uniqueCategories = useMemo(() => [...new Set(allBooks.map(book => book.category))], [allBooks]);
+  const uniqueAuthors = useMemo(() => [...new Set(allBooks.map(book => book.author))].sort(), [allBooks]);
+  const uniqueCategories = useMemo(() => [...new Set(allBooks.map(book => book.category))].sort(), [allBooks]);
 
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <header className="mb-8">
-        <h1 className="text-4xl font-bold font-headline text-primary">Search the Library</h1>
+        <h1 className="text-4xl font-bold text-primary">Search the Library</h1>
         <p className="text-lg text-muted-foreground">Find your next great read. Try a natural language query like "sci-fi books by isaac asimov".</p>
       </header>
       
@@ -116,7 +116,7 @@ export default function SearchPage() {
           </Alert>
         )}
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="w-full sm:w-1/3">
+          <div className="flex-1">
             <Label htmlFor="author-filter">Author</Label>
             <Select value={author} onValueChange={(value) => updateQueryParam('author', value === 'all' ? '' : value)}>
               <SelectTrigger id="author-filter">
@@ -128,7 +128,7 @@ export default function SearchPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-full sm:w-1/3">
+          <div className="flex-1">
             <Label htmlFor="category-filter">Category</Label>
             <Select value={category} onValueChange={(value) => updateQueryParam('category', value === 'all' ? '' : value)}>
               <SelectTrigger id="category-filter">
@@ -140,8 +140,8 @@ export default function SearchPage() {
               </SelectContent>
             </Select>
           </div>
-           <div className="w-full sm:w-1/3 flex items-end">
-            <Button variant="outline" onClick={() => router.push('/search')} className="w-full">
+           <div className="flex items-end">
+            <Button variant="outline" onClick={() => router.push('/search')} className="w-full sm:w-auto">
               Clear Filters
             </Button>
           </div>
@@ -149,7 +149,7 @@ export default function SearchPage() {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold font-headline">Results {query && `for "${query}"`}</h2>
+        <h2 className="text-2xl font-bold">Results {filteredResults.length > 0 ? `(${filteredResults.length})` : ''}</h2>
         {isLoading ? (
            <div className="flex justify-center mt-6">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />

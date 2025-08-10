@@ -69,7 +69,7 @@ export default function AdminDashboardPage() {
     books.forEach(book => {
         counts[book.category] = (counts[book.category] || 0) + 1;
     });
-    return Object.entries(counts).map(([name, value]) => ({ name, value, fill: COLORS[Math.floor(Math.random() * COLORS.length)] }));
+    return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: COLORS[index % COLORS.length] }));
   }, [books]);
 
   if (isLoading) {
@@ -88,7 +88,7 @@ export default function AdminDashboardPage() {
     <div className="container mx-auto py-8 px-4 md:px-6">
       <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-4xl font-bold font-headline text-primary">Admin Dashboard</h1>
+          <h1 className="text-4xl font-bold text-primary">Admin Dashboard</h1>
           <p className="text-lg text-muted-foreground">Manage your digital library resources.</p>
         </div>
         <AddBookDialog onBookAdded={fetchData}>
@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
             </Button>
         </AddBookDialog>
       </header>
-       <section className="mb-8 grid gap-4 md:grid-cols-3">
+       <section className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Books</CardTitle>
@@ -138,11 +138,11 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
              {isDataLoading ? (
-                 <div className="flex justify-center p-8">
+                 <div className="flex justify-center items-center p-8 min-h-[300px]">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
               ) : (
-                <ChartContainer config={{}} className="min-h-[200px] w-full">
+                <ChartContainer config={{}} className="min-h-[300px] w-full">
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
             <CardDescription>Monthly borrows and new user signups.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+            <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
               <ResponsiveContainer width="100%" height={300}>
                   <RechartsBarChart data={chartData}>
                     <CartesianGrid vertical={false} />
@@ -204,6 +204,7 @@ export default function AdminDashboardPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -233,6 +234,7 @@ export default function AdminDashboardPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -249,6 +251,7 @@ export default function AdminDashboardPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -267,13 +270,13 @@ export default function AdminDashboardPage() {
                           <Badge variant={user.role.includes('staff') || user.role.includes('admin') || user.role.includes('librarian') ? 'default' : 'outline'}>{user.role}</Badge>
                         </TableCell>
                         <TableCell>
-                            {/* Assuming createdAt is added to user profiles */}
                             {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>

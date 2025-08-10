@@ -78,9 +78,9 @@ const prompt = ai.definePrompt({
 
 Analyze the user's query: "{{{query}}}"
 
-First, extract the main keywords from the query that should be used for a text search.
+First, extract the main keywords from the query that should be used for a text search. Your response should always include a 'query' field with these keywords.
 Then, determine if the user is asking for a specific category, author, or publication year and use the corresponding tools to set those filters. If a specific author or category is mentioned, try to match it to the known values.
-Finally, provide a brief, one-sentence explanation of your reasoning for the chosen filters.
+Finally, provide a brief, one-sentence explanation of your reasoning for the chosen filters. This reasoning should be the main text content of your response.
 `,
 });
 
@@ -93,38 +93,46 @@ const searchBooksFlow = ai.defineFlow(
   async (input) => {
     const llmResponse = await prompt(input);
     const toolCalls = llmResponse.toolCalls();
+    const textResponse = llmResponse.text || "Searching based on your query.";
 
     const output: SearchBooksOutput = {
-      reasoning: llmResponse.text || "Searching based on your query.",
-      query: llmResponse.text.split('Keywords:')[1]?.split(';')[0].trim().replace(/"/g, ''),
+      reasoning: textResponse,
     };
     
+    // Extract main query keywords from reasoning if possible
+    const keywordsMatch = textResponse.match(/keywords: "([^"]+)"/i);
+    if (keywordsMatch && keywordsMatch[1]) {
+        output.query = keywordsMatch[1];
+    }
+    
     for (const toolCall of toolCalls) {
-      if (toolCall.tool === 'filterByCategory') {
+      if (toolCall.tool === 'filterByCategory' && toolCall.input.category) {
         output.category = toolCall.input.category;
       }
-      if (toolCall.tool === 'filterByAuthor') {
+      if (toolCall.tool === 'filterByAuthor' && toolCall.input.author) {
         output.author = toolCall.input.author;
       }
-      if (toolCall.tool === 'filterByPublicationYear') {
+      if (toolCall.tool === 'filterByPublicationYear' && toolCall.input.year) {
         output.publicationYear = toolCall.input.year;
       }
     }
     
-    // Extract reasoning, which is the text part of the response.
-    output.reasoning = llmResponse.text;
-
-    // A simple heuristic to extract keywords if they are not part of the reasoning.
-    if (!output.query && input.query) {
-        // Remove tool-related phrases
-        const queryKeywords = input.query
-            .replace(/category|genre|author|by|year|in|from/gi, '')
-            .replace(/\b(a|an|the|is|are)\b/gi, '')
-            .trim();
-        output.query = queryKeywords;
+    // Fallback heuristic if LLM fails to provide a query
+    if (!output.query) {
+      // Simple approach: strip out known tool-related words
+      const knownFilters = [...KNOWN_AUTHORS, ...KNOWN_CATEGORIES].map(f => f.toLowerCase());
+      const queryKeywords = input.query
+        .toLowerCase()
+        .split(' ')
+        .filter(word => !knownFilters.includes(word))
+        .join(' ')
+        .replace(/category|genre|author|by|year|in|from|published|written/gi, '')
+        .replace(/\b(a|an|the|is|are)\b/gi, '')
+        .replace(/[0-9]{4}/g, '') // remove years
+        .trim();
+      output.query = queryKeywords;
     }
-
-
+    
     return output;
   }
 );

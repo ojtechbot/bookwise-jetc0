@@ -157,12 +157,12 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
+      <header className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold font-headline text-primary">Student Dashboard</h1>
+          <h1 className="text-4xl font-bold text-primary">Student Dashboard</h1>
           <p className="text-lg text-muted-foreground">Welcome back, {user.displayName || 'Student'}.</p>
         </div>
-        <Button asChild variant="outline" className="mt-4 md:mt-0">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/dashboard/settings">
             <Settings className="mr-2 h-4 w-4" />
             Profile Settings
@@ -170,7 +170,7 @@ export default function DashboardPage() {
         </Button>
       </header>
       <Tabs defaultValue="borrowed" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-xl">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
           <TabsTrigger value="borrowed"><Book className="mr-2 h-4 w-4" />Borrowed Books</TabsTrigger>
           <TabsTrigger value="history"><History className="mr-2 h-4 w-4" />History</TabsTrigger>
           <TabsTrigger value="stats"><BarChart2 className="mr-2 h-4 w-4" />My Stats</TabsTrigger>
@@ -183,6 +183,7 @@ export default function DashboardPage() {
               <CardDescription>These are the books you have checked out. Please return them by the due date.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -209,6 +210,7 @@ export default function DashboardPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -219,6 +221,7 @@ export default function DashboardPage() {
               <CardDescription>A record of all the books you've borrowed in the past.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -245,6 +248,7 @@ export default function DashboardPage() {
                    )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -277,7 +281,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                          {historyBooks.length > 0 ? (
-                            <ChartContainer config={{}} className="min-h-[200px] w-full">
+                            <ChartContainer config={{}} className="min-h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height={250}>
                                     <PieChart>
                                         <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
@@ -291,7 +295,7 @@ export default function DashboardPage() {
                                 </ResponsiveContainer>
                             </ChartContainer>
                          ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-muted rounded-lg">
+                            <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-muted rounded-lg min-h-[250px]">
                                 <p className="font-semibold">No Reading History Yet</p>
                                 <p className="text-sm text-muted-foreground">Your genre breakdown will appear here once you've returned a book.</p>
                             </div>
