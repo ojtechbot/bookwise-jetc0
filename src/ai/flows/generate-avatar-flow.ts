@@ -32,10 +32,10 @@ const generateAvatarFlow = ai.defineFlow(
     outputSchema: GenerateAvatarOutputSchema,
   },
   async ({ prompt }) => {
-    const fullPrompt = `Vector art, flat illustration, circular profile picture of ${prompt}. Clean, simple, modern, on a flat vibrant background.`;
+    const fullPrompt = `A clean, simple, modern, vector art illustration of a circular profile picture of ${prompt}. Flat vibrant background.`;
 
     const { media } = await ai.generate({
-      model: 'googleai/gemini-2.0-flash-preview-image-generation',
+      model: 'googleai/gemini-1.5-flash-preview-0514',
       prompt: fullPrompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
