@@ -47,40 +47,61 @@ const initialUsers = [
 async function seedUsers() {
   console.log('Starting to seed users...');
   for (const userData of initialUsers) {
-    const { uid, email, password, displayName, role, regNumber } = userData;
-    try {
-      // Create user in Firebase Auth
-      await auth.createUser({
-        uid,
-        email,
-        password,
-        displayName,
-      });
-      console.log(`Successfully created auth user: ${email}`);
+    const { uid: placeholderUid, email, password, displayName, role, regNumber } = userData;
+    let userRecord;
+    let finalUid;
 
-      // Create user profile in Firestore
-      const userRef = db.collection('users').doc(uid);
-      await userRef.set({
-        uid,
-        name: displayName,
-        email,
-        role,
-        regNumber,
-        borrowedBooks: [],
-        createdAt: Timestamp.now(),
-        photoUrl: '',
+    try {
+      // Check if user exists by email
+      userRecord = await auth.getUserByEmail(email);
+      finalUid = userRecord.uid;
+      console.log(`User ${email} already exists. Updating password and profile.`);
+      
+      // Update password to ensure it matches the seed data
+      await auth.updateUser(finalUid, {
+        password: password,
+        displayName: displayName,
       });
-      console.log(`Successfully created firestore profile for: ${email}`);
+
     } catch (error: any) {
-      if (error.code === 'auth/uid-already-exists' || error.code === 'auth/email-already-exists') {
-        console.log(`User ${email} already exists. Skipping...`);
+      if (error.code === 'auth/user-not-found') {
+        // User does not exist, so create them
+        console.log(`User ${email} not found. Creating new user.`);
+        userRecord = await auth.createUser({
+          email,
+          password,
+          displayName,
+        });
+        finalUid = userRecord.uid;
+        console.log(`Successfully created auth user: ${email}`);
       } else {
-        console.error(`Error creating user ${email}:`, error);
+        // For other errors, log them and skip this user
+        console.error(`Error processing user ${email}:`, error);
+        continue;
       }
+    }
+    
+    // At this point, we have a finalUid, so we can create/update the Firestore profile
+    try {
+        const userRef = db.collection('users').doc(finalUid);
+        await userRef.set({
+            uid: finalUid,
+            name: displayName,
+            email,
+            role,
+            regNumber,
+            borrowedBooks: [],
+            createdAt: Timestamp.now(),
+            photoUrl: '',
+        }, { merge: true }); // Use merge to avoid overwriting existing data fields
+        console.log(`Successfully created/updated Firestore profile for: ${email}`);
+    } catch (dbError) {
+        console.error(`Error creating/updating Firestore profile for ${email}:`, dbError);
     }
   }
   console.log('User seeding finished.');
 }
+
 
 async function seedBooks() {
     console.log('Starting to seed books...');

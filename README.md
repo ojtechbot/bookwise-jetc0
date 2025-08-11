@@ -14,8 +14,10 @@ Run the following command in your terminal **once** before you start the develop
 npm run db:seed
 ```
 
-This will securely create the initial admin account and populate the library with books.
+This will securely create the initial admin and librarian accounts and populate the library with books.
 
-**Default Admin Credentials:**
-- **Email:** `admin@libroweb.io`
-- **Password:** `admin123`
+**Default Credentials:**
+- **Admin Email:** `admin@libroweb.io`
+- **Admin Password:** `admin123`
+- **Librarian Email:** `librarian@libroweb.io`
+- **Librarian Password:** `librarian123`
