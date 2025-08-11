@@ -1,13 +1,10 @@
 
+'use strict';
+require('dotenv').config({ path: '.env.local' });
+
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
-import { config } from 'dotenv';
-
-// Load environment variables from .env file
-config({ path: '.env.local' });
-config();
-
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import initialBooksData from '../data/books.json';
 
 // IMPORTANT: Download your service account key from Firebase Console
@@ -47,7 +44,7 @@ const initialUsers = [
 async function seedUsers() {
   console.log('Starting to seed users...');
   for (const userData of initialUsers) {
-    const { uid: placeholderUid, email, password, displayName, role, regNumber } = userData;
+    const { email, password, displayName, role, regNumber } = userData;
     let userRecord;
     let finalUid;
 
