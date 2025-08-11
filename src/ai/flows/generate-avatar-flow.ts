@@ -35,7 +35,7 @@ const generateAvatarFlow = ai.defineFlow(
     const fullPrompt = `A clean, simple, modern, vector art illustration of a circular profile picture of ${prompt}. Flat vibrant background.`;
 
     const { media } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-preview-0514',
+      model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: fullPrompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
