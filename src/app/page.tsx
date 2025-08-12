@@ -213,10 +213,10 @@ export default function Home() {
       <section className="w-full py-16 md:py-24 bg-primary/5">
         <div className="container mx-auto px-4 md:px-6">
           <h2 className="text-3xl font-bold text-center text-primary">
-            {userProfile ? 'Popular Books' : 'Latest Additions'}
+            Latest Additions
           </h2>
           <p className="text-center mt-2 mb-8 text-foreground/70">
-            {userProfile ? 'Check out the most popular books in our collection.' : 'Check out the newest books added to our collection.'}
+            Check out the newest books added to our collection.
           </p>
           {isLoading ? (
              <div className="flex justify-center">
@@ -224,7 +224,7 @@ export default function Home() {
              </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {(userProfile ? popularBooks : latestBooks).map(book => (
+              {latestBooks.map(book => (
                 <BookCard key={book.id} {...book} />
               ))}
             </div>
