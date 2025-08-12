@@ -60,14 +60,16 @@ export default {
                     backgroundColor: 'rgba(135,131,120,0.15)',
                     borderRadius: '6px',
                 },
-                h1: {
-                  fontSize: '1.5rem'
+                table: {
+                  width: '100%',
+                  borderCollapse: 'collapse',
                 },
-                h2: {
-                  fontSize: '1.25rem'
+                'th, td': {
+                   border: `1px solid ${theme('colors.border')}`,
+                   padding: '0.5rem',
                 },
-                h3: {
-                  fontSize: '1.1rem'
+                th: {
+                  backgroundColor: theme('colors.muted'),
                 }
             },
         },

@@ -10,7 +10,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z, GenkitError } from 'genkit';
 import { getBooks, Book } from '@/services/book-service';
 import { getUsers, UserProfile } from '@/services/user-service';
 
@@ -63,7 +63,7 @@ const listAllUsers = ai.defineTool(
 
 
 const MessageSchema = z.object({
-  role: z.enum(['user', 'bot', 'tool']),
+  role: z.enum(['user', 'model', 'tool']),
   content: z.string(),
 });
 
@@ -95,10 +95,10 @@ You are chatting with {{userName}}.
 
 Your capabilities are:
 1.  **Answer questions about Libroweb**: Explain its features like borrowing, returning, searching for books, and the student/admin dashboards.
-2.  **Provide Book Recommendations & Search**: Use the \`searchLibrary\` tool to find specific books or provide recommendations from the catalog.
+2.  **Provide Book Recommendations & Search**: Use the \`searchLibrary\` tool to find specific books or provide recommendations from the catalog. When presenting search results, format them in a markdown table.
 3.  **Act as a Study Guide**: Provide general study tips, help with brainstorming ideas for essays, explain concepts in simple terms, or offer encouragement.
 4.  **Write Code**: You can generate code snippets, especially in languages like Javascript, Python, and HTML. When writing code, always use markdown code blocks with the correct language identifier (e.g., \`\`\`html).
-5.  **Admin Tasks**: If the user is an admin ({{isAdmin}} is true), you can use the \`listAllUsers\` tool to provide information about registered users. If a non-admin user asks for this information, you MUST refuse politely and explain it's an admin-only feature.
+5.  **Admin Tasks**: If the user is an admin ({{isAdmin}} is true), you can use the \`listAllUsers\` tool to provide information about registered users. If a non-admin user asks for this information, you MUST refuse politely and explain it's an admin-only feature. When presenting user lists, format them in a markdown table.
 6.  **Engage in Friendly Conversation**: Be personable and engaging.
 
 **Conversation History:**
@@ -120,7 +120,34 @@ const chatbotFlow = ai.defineFlow(
     outputSchema: ChatbotOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+      const llmResponse = await prompt(input);
+      const output = llmResponse.output;
+
+      if (output) {
+        return output;
+      }
+      
+      // Handle cases where the model uses a tool but doesn't provide text
+      if (llmResponse.toolCalls().length > 0) {
+        return { reply: "I've looked that up for you. Here are the results:" };
+      }
+      
+      // Fallback for other unexpected cases
+      return { reply: "I'm sorry, I'm not sure how to respond to that. Could you try rephrasing?" };
+
+    } catch (e: any) {
+        // Log the detailed error and return a user-friendly message
+        console.error(`[Chatbot Flow Error]`, e);
+        
+        let errorMessage = 'An unexpected error occurred. Please try again.';
+        if (e instanceof GenkitError) {
+           errorMessage = `I'm sorry, I encountered a system error. Details: ${e.message}`;
+        }
+        
+        return {
+          reply: errorMessage
+        };
+    }
   }
 );

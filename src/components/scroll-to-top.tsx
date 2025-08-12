@@ -33,7 +33,7 @@ export function ScrollToTop() {
   }, []);
 
   return (
-    <div className="fixed bottom-24 right-6 z-50">
+    <div className="fixed bottom-24 right-6 z-50 md:bottom-6 md:right-[calc(100vw-3rem)] md:right-auto md:left-[calc(100vw-5rem)]">
       <Button
         size="icon"
         onClick={scrollToTop}

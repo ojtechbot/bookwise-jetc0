@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useTransition } from 'react';
+import { useState, useRef, useEffect, useTransition, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,14 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '@/context/auth-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
+import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useChatStore } from '@/store/chat-store';
+import remarkGfm from 'remark-gfm';
 
 type Message = {
-  role: 'user' | 'bot';
+  role: 'user' | 'model';
   content: string;
 };
 
@@ -29,7 +31,7 @@ type Conversation = {
 };
 
 const initialMessage: Message = {
-    role: 'bot',
+    role: 'model',
     content: `Hello! I'm your friendly AI assistant. You can ask me about the Libroweb app, get book recommendations, or even ask for study tips. How can I help you today?`,
 };
 
@@ -61,8 +63,8 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
     }
 
     return (
-        <div className="my-2">
-            <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, borderRadius: '0.375rem' }}>
+        <div className="my-2 text-sm">
+            <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, borderRadius: '0.375rem' }} >
                 {code}
             </SyntaxHighlighter>
         </div>
@@ -70,37 +72,34 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
 }
 
 function MarkdownMessage({ content }: { content: string }) {
-  const parts = content.split(/(```[\s\S]*?```)/);
-  
   return (
-    <div>
-      {parts.map((part, index) => {
-        const match = part.match(/^```(\w+)?\n([\s\S]*?)```$/);
-        if (match) {
-          const lang = match[1] || 'bash';
-          const code = match[2];
-          return <CodeBlock key={index} lang={lang} code={code} />;
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code({ node, className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || '');
+          const codeString = String(children).replace(/\n$/, '');
+          return match ? (
+            <CodeBlock lang={match[1]} code={codeString} />
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        },
+        table({children}) {
+          return <table className="w-full border-collapse border border-border">{children}</table>
+        },
+        th({children}) {
+            return <th className="border border-border px-2 py-1 text-left">{children}</th>
+        },
+        td({children}) {
+            return <td className="border border-border px-2 py-1">{children}</td>
         }
-        
-        // This is a naive way to render markdown-like text without the full library.
-        // It supports bold, italic, and lists.
-        const textLines = part.trim().split('\n').map((line, lineIndex) => {
-          line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-          line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
-          if (line.trim().startsWith('- ')) {
-            return `<li class="ml-4">${line.trim().substring(2)}</li>`;
-          }
-          return line;
-        });
-
-        let htmlContent = textLines.join('<br />');
-        if (htmlContent.includes('<li>')) {
-            htmlContent = `<ul>${htmlContent}</ul>`
-        }
-
-        return <div key={index} dangerouslySetInnerHTML={{ __html: htmlContent }} />;
-      })}
-    </div>
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   );
 }
 
@@ -123,9 +122,17 @@ export function AiChatWidget() {
   // Load conversations from local storage on mount
   useEffect(() => {
     if(typeof window !== 'undefined') {
-        const savedConversations = localStorage.getItem('chatConversations');
-        if (savedConversations) {
-            setConversations(JSON.parse(savedConversations));
+        try {
+            const savedConversations = localStorage.getItem('chatConversations');
+            if (savedConversations) {
+                const parsedConvos = JSON.parse(savedConversations);
+                if (Array.isArray(parsedConvos) && parsedConvos.length > 0) {
+                    setConversations(parsedConvos);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to parse chat conversations from localStorage", error);
+            setConversations([]);
         }
     }
   }, []);
@@ -133,7 +140,11 @@ export function AiChatWidget() {
   // Save conversations to local storage whenever they change
   useEffect(() => {
     if(typeof window !== 'undefined') {
-        localStorage.setItem('chatConversations', JSON.stringify(conversations));
+        if (conversations.length > 0) {
+            localStorage.setItem('chatConversations', JSON.stringify(conversations));
+        } else {
+            localStorage.removeItem('chatConversations');
+        }
     }
   }, [conversations]);
   
@@ -158,10 +169,9 @@ export function AiChatWidget() {
   const deleteConversation = (id: string) => {
     setConversations(prev => prev.filter(c => c.id !== id));
     if (currentConversationId === id) {
-        // If the deleted chat was the current one, select the first available or create a new one
         const remainingConversations = conversations.filter(c => c.id !== id);
-        if(remainingConversations.length > 1) { // 1 because state update is pending
-             setCurrentConversationId(remainingConversations[1].id);
+        if(remainingConversations.length > 1) { 
+             setCurrentConversationId(conversations.find(c => c.id !== id)?.id || null);
         } else {
             handleNewConversation();
         }
@@ -171,7 +181,6 @@ export function AiChatWidget() {
 
   useEffect(() => {
     if (isOpen && !currentConversationId) {
-        // If there are no conversations, create a new one. Otherwise, select the most recent one.
         if (conversations.length === 0) {
             handleNewConversation();
         } else {
@@ -181,14 +190,16 @@ export function AiChatWidget() {
   }, [isOpen, currentConversationId, conversations]);
 
 
-  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
-    if (scrollViewportRef.current) {
-      scrollViewportRef.current.scrollTo({
-        top: scrollViewportRef.current.scrollHeight,
-        behavior: behavior,
-      });
-    }
-  };
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
+    setTimeout(() => {
+        if (scrollViewportRef.current) {
+            scrollViewportRef.current.scrollTo({
+                top: scrollViewportRef.current.scrollHeight,
+                behavior: behavior,
+            });
+        }
+    }, 100);
+  }, []);
 
   const scrollToTop = () => {
      if (scrollViewportRef.current) {
@@ -200,20 +211,21 @@ export function AiChatWidget() {
   }
 
   useEffect(() => {
-    if (currentConversationId) {
-        scrollToBottom('auto');
+    if (isOpen) {
+      scrollToBottom('auto');
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, isOpen, scrollToBottom]);
 
    useEffect(() => {
     if(isOpen){
       scrollToBottom('smooth');
     }
-  }, [conversations, isPending, isOpen]);
+  }, [conversations, isPending, isOpen, scrollToBottom]);
 
    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    setShowScrollDown(scrollHeight - scrollTop > clientHeight + 50);
+    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 50;
+    setShowScrollDown(!isAtBottom);
     setShowScrollUp(scrollTop > 200);
   };
   
@@ -224,19 +236,21 @@ export function AiChatWidget() {
     const userMessage: Message = { role: 'user', content: input };
     
     const currentConversation = conversations.find(c => c.id === currentConversationId);
-    const newTitle = currentConversation?.messages.length === 1 ? input.trim().substring(0, 30) + '...' : (currentConversation?.title || 'New Chat');
+    const newTitle = (currentConversation?.messages.length === 1 && currentConversation.title === 'New Chat') 
+        ? input.trim().substring(0, 25) + (input.trim().length > 25 ? '...' : '')
+        : (currentConversation?.title || 'New Chat');
 
-    const updatedConversations = conversations.map(c => 
+    setConversations(prev => prev.map(c => 
         c.id === currentConversationId 
         ? { ...c, title: newTitle, messages: [...c.messages, userMessage] } 
         : c
-    );
-    setConversations(updatedConversations);
+    ));
     
-    const history = updatedConversations.find(c => c.id === currentConversationId)?.messages.slice(0, -1).map(m => ({
-        role: m.role as 'user' | 'bot',
+    const conversationToSubmit = conversations.find(c => c.id === currentConversationId);
+    const history = (conversationToSubmit?.messages || []).map(m => ({
+        role: m.role as 'user' | 'model',
         content: m.content
-    })) || [];
+    }));
     
     setInput('');
 
@@ -248,7 +262,7 @@ export function AiChatWidget() {
             userName: user?.displayName || 'Guest',
             isAdmin: !isStudent
         });
-        const botMessage: Message = { role: 'bot', content: response.reply };
+        const botMessage: Message = { role: 'model', content: response.reply };
         setConversations(prev => prev.map(c => 
             c.id === currentConversationId 
             ? { ...c, messages: [...c.messages, botMessage] } 
@@ -257,7 +271,7 @@ export function AiChatWidget() {
       } catch (error) {
         console.error('Chatbot error:', error);
         const errorMessage: Message = {
-          role: 'bot',
+          role: 'model',
           content: 'Sorry, I encountered an error. Please try again.',
         };
         setConversations(prev => prev.map(c => 
@@ -349,9 +363,6 @@ export function AiChatWidget() {
                     <CardTitle className="font-headline text-lg">AI Study Buddy</CardTitle>
                 </div>
                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={handleNewConversation}>
-                        <PlusSquare className="h-5 w-5" />
-                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
                         <X className="h-5 w-5" />
                     </Button>
@@ -359,17 +370,17 @@ export function AiChatWidget() {
               </CardHeader>
 
                 <div className="relative flex-1 h-0">
-                    <ScrollArea className="absolute inset-0" viewportRef={scrollViewportRef} onScroll={handleScroll}>
+                    <ScrollArea className="h-full" viewportRef={scrollViewportRef} onScroll={handleScroll}>
                       <CardContent className="space-y-4 p-4">
                         {currentMessages.map((message, index) => (
                           <div key={index} className={cn('flex items-start gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-                            {message.role === 'bot' && (
+                            {message.role === 'model' && (
                                <Avatar className="w-8 h-8 border-2 border-primary/20">
                                   <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
                               </Avatar>
                             )}
-                             <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose-sm dark:prose-invert prose-p:my-0 prose-ul:my-0 prose-li:my-0', 
-                              message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                             <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose-sm dark:prose-invert prose-p:my-0 prose-ul:my-0 prose-li:my-0 prose-table:my-2 prose-tr:my-0', 
+                              message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground')}>
                                <MarkdownMessage content={message.content} />
                              </div>
                             {message.role === 'user' && (
