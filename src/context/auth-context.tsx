@@ -46,19 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setIsLoading(true);
       setUser(currentUser);
       if (currentUser) {
         setIsStudent(!!currentUser.email?.endsWith('@student.libroweb.io'));
         // Fetch profile but don't wait for it to finish before hiding preloader
-        fetchUserProfile(currentUser).finally(() => {
-            setIsLoading(false);
-        });
+        fetchUserProfile(currentUser);
       } else {
         setIsStudent(false);
         setUserProfile(null);
-        setIsLoading(false);
       }
+      // Hide preloader as soon as auth state is known
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
