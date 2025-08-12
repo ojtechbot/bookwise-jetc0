@@ -348,58 +348,60 @@ export function AiChatWidget() {
                     </Button>
                  </div>
               </CardHeader>
-              <div className="flex-grow relative">
-                <ScrollArea className="h-full" viewportRef={scrollViewportRef} onScroll={handleScroll}>
-                  <CardContent className="space-y-4 p-4">
-                    {currentMessages.map((message, index) => (
-                      <div key={index} className={cn('flex items-start gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-                        {message.role === 'bot' && (
-                           <Avatar className="w-8 h-8 border-2 border-primary/20">
-                              <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
-                          </Avatar>
-                        )}
-                         <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose-sm dark:prose-invert prose-p:my-0 prose-ul:my-0 prose-li:my-0', 
-                          message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                           <MarkdownMessage content={message.content} />
-                         </div>
-                        {message.role === 'user' && (
-                           <Avatar className="w-8 h-8">
-                              <AvatarImage src={user?.photoURL ?? undefined} />
-                              <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
-                          </Avatar>
-                        )}
-                      </div>
-                    ))}
-                    {isPending && (
-                       <div className="flex items-start gap-3 justify-start">
-                           <Avatar className="w-8 h-8 border-2 border-primary/20">
-                              <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
-                          </Avatar>
-                          <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                              <span className="text-sm">Thinking...</span>
+              <div className="flex flex-col flex-1 h-0">
+                 <div className="relative flex-1">
+                    <ScrollArea className="absolute inset-0" viewportRef={scrollViewportRef} onScroll={handleScroll}>
+                      <CardContent className="space-y-4 p-4">
+                        {currentMessages.map((message, index) => (
+                          <div key={index} className={cn('flex items-start gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+                            {message.role === 'bot' && (
+                               <Avatar className="w-8 h-8 border-2 border-primary/20">
+                                  <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
+                              </Avatar>
+                            )}
+                             <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose-sm dark:prose-invert prose-p:my-0 prose-ul:my-0 prose-li:my-0', 
+                              message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                               <MarkdownMessage content={message.content} />
+                             </div>
+                            {message.role === 'user' && (
+                               <Avatar className="w-8 h-8">
+                                  <AvatarImage src={user?.photoURL ?? undefined} />
+                                  <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
+                              </Avatar>
+                            )}
                           </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </ScrollArea>
-                <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-                    <Button
-                        size="icon"
-                        variant="secondary"
-                        onClick={scrollToTop}
-                        className={cn("rounded-full transition-opacity", showScrollUp ? "opacity-100" : "opacity-0 pointer-events-none")}
-                    >
-                        <ChevronUp className="h-5 w-5" />
-                    </Button>
-                     <Button
-                        size="icon"
-                        variant="secondary"
-                        onClick={() => scrollToBottom()}
-                        className={cn("rounded-full transition-opacity", showScrollDown ? "opacity-100" : "opacity-0 pointer-events-none")}
-                    >
-                        <ChevronDown className="h-5 w-5" />
-                    </Button>
+                        ))}
+                        {isPending && (
+                           <div className="flex items-start gap-3 justify-start">
+                               <Avatar className="w-8 h-8 border-2 border-primary/20">
+                                  <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
+                              </Avatar>
+                              <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                  <span className="text-sm">Thinking...</span>
+                              </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </ScrollArea>
+                    <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            onClick={scrollToTop}
+                            className={cn("rounded-full transition-opacity", showScrollUp ? "opacity-100" : "opacity-0 pointer-events-none")}
+                        >
+                            <ChevronUp className="h-5 w-5" />
+                        </Button>
+                         <Button
+                            size="icon"
+                            variant="secondary"
+                            onClick={() => scrollToBottom()}
+                            className={cn("rounded-full transition-opacity", showScrollDown ? "opacity-100" : "opacity-0 pointer-events-none")}
+                        >
+                            <ChevronDown className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </div>
               </div>
               <CardFooter className="pt-4 border-t">
