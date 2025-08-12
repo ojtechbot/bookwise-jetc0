@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/context/auth-context';
 import { ThemeProvider } from '@/context/theme-provider';
 import { AiChatWidget } from '@/components/ai-chat-widget';
+import { ScrollToTop } from '@/components/scroll-to-top';
 
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({
               <Footer />
               <Toaster />
               <AiChatWidget />
+              <ScrollToTop />
           </AuthProvider>
         </ThemeProvider>
       </body>

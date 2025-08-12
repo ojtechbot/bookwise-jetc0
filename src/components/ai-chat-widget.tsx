@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, X, Send, Bot, User, Loader2, Sparkles, Menu, PlusSquare, Trash2 } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Loader2, Sparkles, Menu, PlusSquare, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { chatbot } from '@/ai/flows/chatbot-flow';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -41,7 +41,10 @@ export function AiChatWidget() {
   
   const [input, setInput] = useState('');
   const [isPending, startTransition] = useTransition();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
+
+  const [showScrollDown, setShowScrollDown] = useState(false);
+  const [showScrollUp, setShowScrollUp] = useState(false);
 
   // Load conversations from local storage on mount
   useEffect(() => {
@@ -104,21 +107,48 @@ export function AiChatWidget() {
   }, [isOpen, currentConversationId, conversations]);
 
 
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTo({
+        top: scrollViewportRef.current.scrollHeight,
+        behavior: behavior,
+      });
+    }
+  };
+
+  const scrollToTop = () => {
+     if (scrollViewportRef.current) {
+      scrollViewportRef.current.scrollTo({
+        top: 0,
         behavior: 'smooth',
       });
     }
-  }, [conversations, currentConversationId]);
+  }
+
+  useEffect(() => {
+    scrollToBottom('auto');
+  }, [currentConversationId]);
+
+   useEffect(() => {
+    if(!isPending){
+      scrollToBottom('smooth');
+    }
+  }, [conversations, isPending]);
+
+   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // Show scroll to bottom button if not at the bottom
+    setShowScrollDown(scrollHeight - scrollTop > clientHeight + 50);
+    // Show scroll to top button if scrolled down more than a certain amount
+    setShowScrollUp(scrollTop > 200);
+  };
+  
 
   const handleSendMessage = () => {
     if (input.trim() === '' || !currentConversationId) return;
 
     const userMessage: Message = { role: 'user', content: input };
     
-    // Create a new conversation if the title is still 'New Chat'
     const currentConversation = conversations.find(c => c.id === currentConversationId);
     const newTitle = currentConversation?.title === 'New Chat' ? input.trim().substring(0, 30) + '...' : currentConversation?.title;
 
@@ -236,40 +266,60 @@ export function AiChatWidget() {
                     </Button>
                  </div>
               </CardHeader>
-              <ScrollArea className="flex-grow" ref={scrollAreaRef}>
-                <CardContent className="space-y-4 p-4">
-                  {currentMessages.map((message, index) => (
-                    <div key={index} className={cn('flex items-start gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-                      {message.role === 'bot' && (
-                         <Avatar className="w-8 h-8 border-2 border-primary/20">
-                            <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
-                        </Avatar>
-                      )}
-                       <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose prose-sm dark:prose-invert', 
-                        message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                       </div>
-                      {message.role === 'user' && (
-                         <Avatar className="w-8 h-8">
-                            <AvatarImage src={user?.photoURL ?? undefined} />
-                            <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
-                  {isPending && (
-                     <div className="flex items-start gap-3 justify-start">
-                         <Avatar className="w-8 h-8 border-2 border-primary/20">
-                            <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
-                        </Avatar>
-                        <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span className="text-sm">Thinking...</span>
-                        </div>
-                    </div>
-                  )}
-                </CardContent>
-              </ScrollArea>
+              <div className="flex-grow relative">
+                <ScrollArea className="h-full" viewportRef={scrollViewportRef} onScroll={handleScroll}>
+                  <CardContent className="space-y-4 p-4">
+                    {currentMessages.map((message, index) => (
+                      <div key={index} className={cn('flex items-start gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+                        {message.role === 'bot' && (
+                           <Avatar className="w-8 h-8 border-2 border-primary/20">
+                              <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
+                          </Avatar>
+                        )}
+                         <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose prose-sm dark:prose-invert', 
+                          message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                         </div>
+                        {message.role === 'user' && (
+                           <Avatar className="w-8 h-8">
+                              <AvatarImage src={user?.photoURL ?? undefined} />
+                              <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+                    ))}
+                    {isPending && (
+                       <div className="flex items-start gap-3 justify-start">
+                           <Avatar className="w-8 h-8 border-2 border-primary/20">
+                              <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
+                          </Avatar>
+                          <div className="p-3 rounded-lg bg-muted flex items-center gap-2">
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                              <span className="text-sm">Thinking...</span>
+                          </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </ScrollArea>
+                <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+                    <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={scrollToTop}
+                        className={cn("rounded-full transition-opacity", showScrollUp ? "opacity-100" : "opacity-0 pointer-events-none")}
+                    >
+                        <ChevronUp className="h-5 w-5" />
+                    </Button>
+                     <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => scrollToBottom()}
+                        className={cn("rounded-full transition-opacity", showScrollDown ? "opacity-100" : "opacity-0 pointer-events-none")}
+                    >
+                        <ChevronDown className="h-5 w-5" />
+                    </Button>
+                </div>
+              </div>
               <CardFooter className="pt-4 border-t">
                 <form onSubmit={handleFormSubmit} className="flex w-full items-center space-x-2">
                   <Input
