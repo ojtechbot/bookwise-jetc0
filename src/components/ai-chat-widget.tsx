@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, X, Send, Bot, User, Loader2, Sparkles, Menu, PlusSquare, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Loader2, Sparkles, Menu, PlusSquare, Trash2, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { chatbot } from '@/ai/flows/chatbot-flow';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useAuth } from '@/context/auth-context';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Separator } from './ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 type Message = {
   role: 'user' | 'bot';
@@ -31,8 +32,80 @@ const initialMessage: Message = {
     content: `Hello! I'm your friendly AI assistant. You can ask me about the Libroweb app, get book recommendations, or even ask for study tips. How can I help you today?`,
 };
 
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+    if (lang === 'html') {
+        return (
+            <LiveProvider code={code}>
+                 <Tabs defaultValue="preview" className="my-2">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="preview"><Eye className="mr-2 h-4 w-4"/>Preview</TabsTrigger>
+                        <TabsTrigger value="code">Code</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="preview">
+                        <div className="p-4 border rounded-md min-h-24">
+                          <LivePreview />
+                        </div>
+                        <LiveError className="text-red-500 text-xs mt-2 p-2 bg-red-500/10 rounded-md"/>
+                    </TabsContent>
+                    <TabsContent value="code">
+                        <div className="relative">
+                         <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, borderRadius: '0.375rem' }}>
+                            {code}
+                         </SyntaxHighlighter>
+                        </div>
+                    </TabsContent>
+                </Tabs>
+            </LiveProvider>
+        );
+    }
+
+    return (
+        <div className="my-2">
+            <SyntaxHighlighter language={lang} style={vscDarkPlus} customStyle={{ margin: 0, borderRadius: '0.375rem' }}>
+                {code}
+            </SyntaxHighlighter>
+        </div>
+    );
+}
+
+function MarkdownMessage({ content }: { content: string }) {
+  const parts = content.split(/(```[\s\S]*?```)/);
+  
+  return (
+    <div>
+      {parts.map((part, index) => {
+        const match = part.match(/^```(\w+)?\n([\s\S]*?)```$/);
+        if (match) {
+          const lang = match[1] || 'bash';
+          const code = match[2];
+          return <CodeBlock key={index} lang={lang} code={code} />;
+        }
+        
+        // This is a naive way to render markdown-like text without the full library.
+        // It supports bold, italic, and lists.
+        const textLines = part.trim().split('\n').map((line, lineIndex) => {
+          line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
+          if (line.trim().startsWith('- ')) {
+            return `<li class="ml-4">${line.trim().substring(2)}</li>`;
+          }
+          return line;
+        });
+
+        let htmlContent = textLines.join('<br />');
+        if (htmlContent.includes('<li>')) {
+            htmlContent = `<ul>${htmlContent}</ul>`
+        }
+
+        return <div key={index} dangerouslySetInnerHTML={{ __html: htmlContent }} />;
+      })}
+    </div>
+  );
+}
+
+
 export function AiChatWidget() {
-  const { user } = useAuth();
+  const { user, isStudent } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
@@ -125,7 +198,6 @@ export function AiChatWidget() {
     }
   }
 
-  // Effect to handle automatic scrolling
   useEffect(() => {
     if (currentConversationId) {
         scrollToBottom('auto');
@@ -133,16 +205,14 @@ export function AiChatWidget() {
   }, [currentConversationId]);
 
    useEffect(() => {
-    if(!isPending){
+    if(isOpen){
       scrollToBottom('smooth');
     }
-  }, [conversations, isPending]);
+  }, [conversations, isPending, isOpen]);
 
    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Show scroll to bottom button if not at the bottom
     setShowScrollDown(scrollHeight - scrollTop > clientHeight + 50);
-    // Show scroll to top button if scrolled down more than a certain amount
     setShowScrollUp(scrollTop > 200);
   };
   
@@ -163,7 +233,7 @@ export function AiChatWidget() {
     setConversations(updatedConversations);
     
     const history = updatedConversations.find(c => c.id === currentConversationId)?.messages.slice(0, -1).map(m => ({
-        role: m.role,
+        role: m.role as 'user' | 'bot',
         content: m.content
     })) || [];
     
@@ -174,7 +244,8 @@ export function AiChatWidget() {
         const response = await chatbot({ 
             query: input, 
             history,
-            userName: user?.displayName || 'Guest'
+            userName: user?.displayName || 'Guest',
+            isAdmin: !isStudent
         });
         const botMessage: Message = { role: 'bot', content: response.reply };
         setConversations(prev => prev.map(c => 
@@ -287,9 +358,9 @@ export function AiChatWidget() {
                               <AvatarFallback><Bot className="h-5 w-5" /></AvatarFallback>
                           </Avatar>
                         )}
-                         <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose prose-sm dark:prose-invert', 
+                         <div className={cn('p-3 rounded-lg max-w-xs md:max-w-sm prose-sm dark:prose-invert prose-p:my-0 prose-ul:my-0 prose-li:my-0', 
                           message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                           <MarkdownMessage content={message.content} />
                          </div>
                         {message.role === 'user' && (
                            <Avatar className="w-8 h-8">
