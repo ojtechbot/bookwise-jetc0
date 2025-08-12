@@ -8,6 +8,7 @@ import { AuthProvider } from '@/context/auth-context';
 import { ThemeProvider } from '@/context/theme-provider';
 import { AiChatWidget } from '@/components/ai-chat-widget';
 import { ScrollToTop } from '@/components/scroll-to-top';
+import { AiChatSuggestion } from '@/components/ai-chat-suggestion';
 
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({
               <main className="flex-grow">{children}</main>
               <Footer />
               <Toaster />
+              <AiChatSuggestion />
               <AiChatWidget />
               <ScrollToTop />
           </AuthProvider>

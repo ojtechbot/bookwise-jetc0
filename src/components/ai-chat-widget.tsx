@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LiveProvider, LiveEditor, LiveError, LivePreview } from 'react-live';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useChatStore } from '@/store/chat-store';
 
 type Message = {
   role: 'user' | 'bot';
@@ -106,7 +107,7 @@ function MarkdownMessage({ content }: { content: string }) {
 
 export function AiChatWidget() {
   const { user, isStudent } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, setIsOpen, showNotification, setNotification } = useChatStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -273,12 +274,20 @@ export function AiChatWidget() {
     handleSendMessage();
   }
 
+  const openChat = () => {
+    setIsOpen(true);
+    if(showNotification){
+      setNotification(false);
+    }
+  }
+
   const currentMessages = conversations.find(c => c.id === currentConversationId)?.messages || [];
 
   return (
     <>
       <div className={cn("fixed bottom-6 right-6 z-50 transition-transform duration-300 md:block", isOpen ? 'translate-x-[200%]' : 'translate-x-0')}>
-        <Button onClick={() => setIsOpen(true)} size="icon" className="rounded-full w-16 h-16 shadow-lg">
+        <Button onClick={openChat} size="icon" className="relative rounded-full w-16 h-16 shadow-lg">
+          {showNotification && <span className="absolute top-0 right-0 block h-4 w-4 rounded-full bg-red-500 border-2 border-card" />}
           <MessageSquare className="h-8 w-8" />
         </Button>
       </div>
@@ -349,7 +358,7 @@ export function AiChatWidget() {
                  </div>
               </CardHeader>
 
-                <div className="relative flex-grow">
+                <div className="relative flex-1 h-0">
                     <ScrollArea className="absolute inset-0" viewportRef={scrollViewportRef} onScroll={handleScroll}>
                       <CardContent className="space-y-4 p-4">
                         {currentMessages.map((message, index) => (
