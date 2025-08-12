@@ -331,13 +331,13 @@ export function AiChatWidget() {
 
             {/* Main Chat View */}
            <div className={cn("flex flex-col h-full transition-transform duration-300 ease-in-out", isMenuOpen ? 'translate-x-[80%]' : 'translate-x-0')}>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between border-b">
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                         <Menu className="h-5 w-5" />
                     </Button>
                     <Sparkles className="h-6 w-6 text-primary" />
-                    <CardTitle className="font-headline">AI Study Buddy</CardTitle>
+                    <CardTitle className="font-headline text-lg">AI Study Buddy</CardTitle>
                 </div>
                  <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" onClick={handleNewConversation}>
@@ -348,8 +348,8 @@ export function AiChatWidget() {
                     </Button>
                  </div>
               </CardHeader>
-              <div className="flex flex-col flex-1 h-0">
-                 <div className="relative flex-1">
+
+                <div className="relative flex-grow">
                     <ScrollArea className="absolute inset-0" viewportRef={scrollViewportRef} onScroll={handleScroll}>
                       <CardContent className="space-y-4 p-4">
                         {currentMessages.map((message, index) => (
@@ -403,7 +403,7 @@ export function AiChatWidget() {
                         </Button>
                     </div>
                 </div>
-              </div>
+
               <CardFooter className="pt-4 border-t">
                 <form onSubmit={handleFormSubmit} className="flex w-full items-center space-x-2">
                   <Input
