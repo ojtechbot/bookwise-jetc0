@@ -135,7 +135,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                   <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}</div>
-                   <p className="text-xs text-muted-foreground">{users.filter(u => u.role === 'student').length} students, {users.filter(u => u.role !== 'student').length} staff</p>
+                   <p className="text-xs text-muted-foreground">{isDataLoading ? '...' : `${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role !== 'student').length} staff`}</p>
               </CardContent>
           </Card>
            <Card>
@@ -154,8 +154,8 @@ export default function AdminDashboardPage() {
                   <BarChart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : '+573'}</div>
-                  <p className="text-xs text-muted-foreground">+201 since last month</p>
+                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : chartData.reduce((acc, item) => acc + item.borrows, 0)}</div>
+                  <p className="text-xs text-muted-foreground">Total borrows this year</p>
               </CardContent>
           </Card>
       </section>
