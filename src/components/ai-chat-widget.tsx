@@ -203,14 +203,22 @@ export function AiChatWidget() {
 
   return (
     <>
-      <div className={cn("fixed bottom-6 right-6 z-50 transition-transform duration-300", isOpen ? 'translate-x-[200%]' : 'translate-x-0')}>
+      <div className={cn("fixed bottom-6 right-6 z-50 transition-transform duration-300 md:block", isOpen ? 'translate-x-[200%]' : 'translate-x-0')}>
         <Button onClick={() => setIsOpen(true)} size="icon" className="rounded-full w-16 h-16 shadow-lg">
           <MessageSquare className="h-8 w-8" />
         </Button>
       </div>
 
-      <div className={cn("fixed bottom-6 right-6 z-50 w-[calc(100vw-3rem)] max-w-md transition-all duration-300", isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none')}>
-        <Card className="flex flex-col h-[70vh] max-h-[70vh] shadow-2xl relative overflow-hidden">
+      <div className={cn(
+          "fixed z-50 transition-all duration-300",
+          "md:bottom-6 md:right-6 md:w-[calc(100vw-3rem)] md:max-w-md",
+          "inset-0 md:inset-auto",
+          isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none md:pointer-events-auto'
+        )}>
+        <Card className={cn(
+            "flex flex-col shadow-2xl relative overflow-hidden",
+            "h-full md:h-[70vh] md:max-h-[70vh] md:rounded-lg"
+            )}>
             {/* History Sidebar */}
             <div className={cn("absolute top-0 left-0 h-full w-4/5 bg-background border-r z-20 transition-transform duration-300 ease-in-out", isMenuOpen ? 'translate-x-0' : '-translate-x-full')}>
                  <CardHeader>
