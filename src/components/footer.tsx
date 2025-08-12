@@ -9,6 +9,12 @@ export function Footer() {
         <p className="order-2 md:order-1 mt-4 md:mt-0">&copy; {new Date().getFullYear()} Libroweb. All rights reserved.</p>
         <div className="order-1 md:order-2 flex flex-col md:flex-row items-center gap-4">
              <nav className="flex gap-4">
+                <Link href="/about" className="hover:text-primary transition-colors">
+                    About
+                </Link>
+                 <Link href="/contact" className="hover:text-primary transition-colors">
+                    Contact
+                </Link>
                 <Link href="/terms" className="hover:text-primary transition-colors">
                     Terms of Service
                 </Link>
