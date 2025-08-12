@@ -125,8 +125,11 @@ export function AiChatWidget() {
     }
   }
 
+  // Effect to handle automatic scrolling
   useEffect(() => {
-    scrollToBottom('auto');
+    if (currentConversationId) {
+        scrollToBottom('auto');
+    }
   }, [currentConversationId]);
 
    useEffect(() => {
@@ -150,7 +153,7 @@ export function AiChatWidget() {
     const userMessage: Message = { role: 'user', content: input };
     
     const currentConversation = conversations.find(c => c.id === currentConversationId);
-    const newTitle = currentConversation?.title === 'New Chat' ? input.trim().substring(0, 30) + '...' : currentConversation?.title;
+    const newTitle = currentConversation?.messages.length === 1 ? input.trim().substring(0, 30) + '...' : (currentConversation?.title || 'New Chat');
 
     const updatedConversations = conversations.map(c => 
         c.id === currentConversationId 
