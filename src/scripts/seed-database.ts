@@ -28,7 +28,7 @@ const initialUsers = [
     email: 'admin@libroweb.io',
     password: 'admin123',
     displayName: 'Admin User',
-    role: 'admin',
+    role: 'admin' as const,
     regNumber: null,
   },
   {
@@ -36,7 +36,7 @@ const initialUsers = [
     email: 'librarian@libroweb.io',
     password: 'librarian123',
     displayName: 'Librarian User',
-    role: 'librarian',
+    role: 'librarian' as const,
     regNumber: null,
   },
 ];
@@ -45,16 +45,15 @@ async function seedUsers() {
   console.log('Starting to seed users...');
   for (const userData of initialUsers) {
     const { email, password, displayName, role, regNumber } = userData;
-    let userRecord;
-    let finalUid;
+    let finalUid: string;
 
     try {
       // Check if user exists by email
-      userRecord = await auth.getUserByEmail(email);
+      const userRecord = await auth.getUserByEmail(email);
       finalUid = userRecord.uid;
       console.log(`User ${email} already exists. Updating password and profile.`);
       
-      // Update password to ensure it matches the seed data
+      // Update password and display name to ensure they match the seed data
       await auth.updateUser(finalUid, {
         password: password,
         displayName: displayName,
@@ -64,21 +63,21 @@ async function seedUsers() {
       if (error.code === 'auth/user-not-found') {
         // User does not exist, so create them
         console.log(`User ${email} not found. Creating new user.`);
-        userRecord = await auth.createUser({
+        const newUserRecord = await auth.createUser({
           email,
           password,
           displayName,
         });
-        finalUid = userRecord.uid;
+        finalUid = newUserRecord.uid;
         console.log(`Successfully created auth user: ${email}`);
       } else {
         // For other errors, log them and skip this user
-        console.error(`Error processing user ${email}:`, error);
+        console.error(`Error processing auth for user ${email}:`, error);
         continue;
       }
     }
     
-    // At this point, we have a finalUid, so we can create/update the Firestore profile
+    // Create/update the Firestore profile
     try {
         const userRef = db.collection('users').doc(finalUid);
         await userRef.set({
@@ -90,7 +89,7 @@ async function seedUsers() {
             borrowedBooks: [],
             createdAt: Timestamp.now(),
             photoUrl: '',
-        }, { merge: true }); // Use merge to avoid overwriting existing data fields
+        }, { merge: true });
         console.log(`Successfully created/updated Firestore profile for: ${email}`);
     } catch (dbError) {
         console.error(`Error creating/updating Firestore profile for ${email}:`, dbError);
@@ -102,18 +101,17 @@ async function seedUsers() {
 
 async function seedBooks() {
     console.log('Starting to seed books...');
-    const batch = db.batch();
-    const booksCollection = db.collection('books');
-
-    // Check if books already exist to prevent re-seeding
-    const snapshot = await booksCollection.limit(1).get();
+    const booksCollectionRef = db.collection('books');
+    const snapshot = await booksCollectionRef.limit(1).get();
+    
     if (!snapshot.empty) {
         console.log('Books collection already has data. Skipping book seeding.');
         return;
     }
 
+    const batch = db.batch();
     initialBooksData.forEach((book) => {
-        const bookRef = booksCollection.doc(book.id);
+        const bookRef = booksCollectionRef.doc(book.id);
         const createdAtTimestamp = book.createdAt 
             ? new Timestamp(book.createdAt.seconds, book.createdAt.nanoseconds) 
             : Timestamp.now();
