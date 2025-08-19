@@ -150,16 +150,35 @@ export const borrowBook = async (bookId: string, userId: string) => {
     const userRef = doc(db, "users", userId);
 
     await runTransaction(db, async (transaction) => {
-        const bookDoc = await transaction.get(bookRef);
+        let bookDoc = await transaction.get(bookRef);
         const userDoc = await transaction.get(userRef);
 
-        if (!bookDoc.exists() || bookDoc.data().availableCopies < 1) {
-            throw new Error("This book is currently unavailable.");
-        }
         if (!userDoc.exists()) {
             throw new Error("User not found.");
         }
         
+        // If book doesn't exist in Firestore, create it from JSON data
+        if (!bookDoc.exists()) {
+            const bookDataFromJson = (initialBooksData as unknown as Book[]).find(b => b.id === bookId);
+            if (!bookDataFromJson) {
+                throw new Error("This book does not exist in the catalog.");
+            }
+            // Create a DB-ready version of the book
+            const newBookForDB = {
+                ...bookDataFromJson,
+                createdAt: Timestamp.fromDate(new Date(bookDataFromJson.createdAt.seconds * 1000)),
+                reviewCount: 0,
+                averageRating: 0,
+            };
+            transaction.set(bookRef, newBookForDB);
+            // Re-fetch the document within the transaction to work with it
+            bookDoc = await transaction.get(bookRef); 
+        }
+
+        if (bookDoc.data()!.availableCopies < 1) {
+            throw new Error("This book is currently unavailable.");
+        }
+
         const borrowedBooks = userDoc.data().borrowedBooks || [];
         if (borrowedBooks.some((b: any) => b.bookId === bookId && b.status === 'borrowed')) {
             throw new Error("You have already borrowed this book.");
