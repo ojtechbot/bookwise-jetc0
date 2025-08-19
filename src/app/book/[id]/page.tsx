@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
-import { borrowBook, returnBook, type Book, submitReview, getReviews } from '@/services/book-service';
+import { getReviews, type Book, submitReview } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
@@ -20,9 +20,8 @@ import allBooksData from '@/data/books.json';
 
 export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
-  const { user, userProfile, isLoading: isAuthLoading, refreshUserProfile } = useAuth();
+  const { user, userProfile } = useAuth();
   const [isSummaryPending, startSummaryTransition] = useTransition();
-  const [isActionPending, startActionTransition] = useTransition();
   const [aiSummary, setAiSummary] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const { toast } = useToast();
@@ -36,6 +35,7 @@ export default function BookDetailsPage() {
   const fetchReviews = useCallback(async () => {
     if (!params.id) return;
     try {
+      // Review fetching can remain as it's a read operation
       const reviewsData = await getReviews(params.id);
       setReviews(reviewsData);
     } catch (error) {
@@ -62,31 +62,17 @@ export default function BookDetailsPage() {
   };
 
   const handleBorrow = () => {
-    if (!book || !user) return;
-    startActionTransition(async () => {
-        try {
-            await borrowBook(book.id, user.uid);
-            await refreshUserProfile();
-            toast({ title: 'Success!', description: `You have borrowed "${book.title}".` });
-        } catch (error: any) {
-            console.error("Failed to borrow book:", error);
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        }
-    });
+    if (!book) return;
+    // Firestore logic removed as per request.
+    console.log(`Borrowing "${book.title}"`);
+    alert(`Borrowing "${book.title}" (simulation).`);
   };
 
   const handleReturn = () => {
-     if (!book || !user) return;
-    startActionTransition(async () => {
-        try {
-            await returnBook(book.id, user.uid);
-            await refreshUserProfile();
-            toast({ title: 'Success!', description: `You have returned "${book.title}".` });
-        } catch (error: any) {
-            console.error("Failed to return book:", error);
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        }
-    });
+     if (!book) return;
+    // Firestore logic removed as per request.
+    console.log(`Returning "${book.title}"`);
+    alert(`Returning "${book.title}" (simulation).`);
   };
 
   const handleReviewSubmit = async (rating: number, comment: string) => {
@@ -121,7 +107,9 @@ export default function BookDetailsPage() {
     );
   }
   
-  const isBorrowedByUser = userProfile?.borrowedBooks?.some(b => b.bookId === book.id && b.status === 'borrowed');
+  // Client-side simulation of borrowed status would go here if needed.
+  // For now, we'll assume it's not borrowed.
+  const isBorrowedByUser = false; 
   const isAvailable = book.availableCopies > 0;
   const hasUserReviewed = user ? reviews.some(r => r.userId === user.uid) : false;
 
@@ -154,17 +142,13 @@ export default function BookDetailsPage() {
             </div>
           <div className="mt-6 flex flex-col sm:flex-row gap-4">
              {isBorrowedByUser ? (
-                 <Button size="lg" className="w-full sm:w-auto" onClick={handleReturn} disabled={isActionPending}>
-                    {isActionPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <History className="mr-2 h-5 w-5" />}
+                 <Button size="lg" className="w-full sm:w-auto" onClick={handleReturn}>
+                    <History className="mr-2 h-5 w-5" />
                     Return Book
                 </Button>
              ) : (
-                <Button size="lg" className="w-full sm:w-auto" onClick={handleBorrow} disabled={!isAvailable || isActionPending || !user}>
-                   {isActionPending ? (
-                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                   ) : (
-                       <BookOpen className="mr-2 h-5 w-5" />
-                   )}
+                <Button size="lg" className="w-full sm:w-auto" onClick={handleBorrow} disabled={!isAvailable || !user}>
+                   <BookOpen className="mr-2 h-5 w-5" />
                    {isAvailable ? 'Borrow Book' : 'Unavailable'}
                 </Button>
              )}
