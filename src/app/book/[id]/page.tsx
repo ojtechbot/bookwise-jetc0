@@ -16,6 +16,7 @@ import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList, type Review } from '@/components/review-list';
 import { useParams } from 'next/navigation';
+import allBooksData from '@/data/books.json';
 
 export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -32,10 +33,21 @@ export default function BookDetailsPage() {
       if (!params.id) return;
       setIsLoading(true);
       try {
-        const [bookData, reviewsData] = await Promise.all([
-          getBook(params.id),
-          getReviews(params.id)
-        ]);
+        // First, try to find the book in the local JSON file.
+        const localBook = (allBooksData as unknown as Book[]).find(b => b.id === params.id);
+        
+        let bookData = localBook || null;
+        
+        // If not found locally, fetch from the database
+        if (!bookData) {
+            bookData = await getBook(params.id);
+        }
+
+        let reviewsData: Review[] = [];
+        if (bookData) { // Only fetch reviews if a book was found
+            reviewsData = await getReviews(params.id);
+        }
+        
         setBook(bookData);
         setReviews(reviewsData);
       } catch (error) {
