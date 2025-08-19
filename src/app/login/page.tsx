@@ -13,8 +13,10 @@ import { auth, signInWithEmailAndPassword } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/auth-context";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const studentFormSchema = z.object({
   regNumber: z.string().min(1, "Registration number is required."),
@@ -30,15 +32,32 @@ const staffFormSchema = z.object({
 
 type StaffFormValues = z.infer<typeof staffFormSchema>;
 
+const defaultStaff = [
+    { name: 'Admin', email: 'admin@libroweb.io', password: 'admin123' },
+    { name: 'Librarian', email: 'librarian@libroweb.io', password: 'librarian123' },
+];
 
 const STUDENT_EMAIL_DOMAIN = 'student.libroweb.io';
 
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { user, isStudent, isLoading } = useAuth();
+
   const [isStudentPending, setIsStudentPending] = useState(false);
   const [isStaffPending, setIsStaffPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoading && user) {
+        if (isStudent) {
+            router.push('/dashboard');
+        } else {
+            router.push('/admin');
+        }
+    }
+  }, [user, isStudent, isLoading, router]);
+
 
   const studentForm = useForm<StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -93,6 +112,19 @@ export default function LoginPage() {
     }
   }
 
+  const handleQuickLogin = (staffMember: typeof defaultStaff[0]) => {
+    staffForm.setValue('email', staffMember.email);
+    staffForm.setValue('password', staffMember.password);
+    onStaffSubmit({ email: staffMember.email, password: staffMember.password });
+  }
+
+  if (isLoading || user) {
+      return (
+          <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          </div>
+      )
+  }
 
   return (
     <div className="container mx-auto flex items-center justify-center py-12 px-4 md:px-6 min-h-[calc(100vh-12rem)]">
@@ -212,6 +244,20 @@ export default function LoginPage() {
                         </Button>
                         </form>
                     </Form>
+                     <Alert className="mt-4">
+                        <AlertTitle>Quick Login (Dev)</AlertTitle>
+                        <AlertDescription>
+                            Use these to quickly access staff accounts.
+                        </AlertDescription>
+                        <div className="mt-2 space-y-2">
+                             {defaultStaff.map(staff => (
+                                <Button key={staff.name} variant="outline" size="sm" className="w-full" onClick={() => handleQuickLogin(staff)} disabled={isStaffPending}>
+                                    {isStaffPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Log in as {staff.name}
+                                </Button>
+                            ))}
+                        </div>
+                     </Alert>
                      <p className="mt-4 text-center text-sm text-muted-foreground">
                         <Link href="/forgot-password" className="underline hover:text-primary">Forgot password?</Link>
                     </p>
