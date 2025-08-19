@@ -12,6 +12,7 @@ import { getBooks, getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
 import Image from "next/image";
+import initialBooksData from '@/data/books.json';
 
 
 const categories = [
@@ -23,27 +24,26 @@ const categories = [
   { name: 'Technology', icon: Tag },
 ];
 
+const latestBooks = [...initialBooksData]
+    .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds)
+    .slice(0, 4) as unknown as BookType[];
+
 export default function Home() {
   const [allBooks, setAllBooks] = useState<BookType[]>([]);
-  const [latestBooks, setLatestBooks] = useState<BookType[]>([]);
   const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchAllBooks = async () => {
       try {
-        const [latest, all] = await Promise.all([
-          getBooks('createdAt', 'desc', 4),
-          getBooks()
-        ]);
-        setLatestBooks(latest);
+        const all = await getBooks();
         setAllBooks(all);
       } catch (error) {
         console.error("Failed to fetch books:", error);
       }
     };
-    fetchInitialData();
+    fetchAllBooks();
   }, []);
 
   const fetchRecommendations = useCallback(async () => {
@@ -222,7 +222,7 @@ export default function Home() {
             </>
           ) : (
              <div className="flex justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-muted-foreground">Could not load latest books.</p>
              </div>
           )}
         </div>
