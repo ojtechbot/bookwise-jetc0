@@ -32,21 +32,23 @@ export default function SearchPage() {
       try {
         const books = await getBooks();
         setAllBooks(books);
-        const years = books.map(b => b.publishedYear);
-        const minYear = Math.min(...years);
-        const maxYear = Math.max(...years);
-        const startYear = searchParams.get('startYear');
-        const endYear = searchParams.get('endYear');
-        setYearRange([
-            startYear ? parseInt(startYear) : minYear, 
-            endYear ? parseInt(endYear) : maxYear
-        ]);
+        const years = books.map(b => b.publishedYear).filter(y => y);
+        if (years.length > 0) {
+            const minYear = Math.min(...years);
+            const maxYear = Math.max(...years);
+            const startYear = searchParams.get('startYear');
+            const endYear = searchParams.get('endYear');
+            setYearRange([
+                startYear ? parseInt(startYear) : minYear, 
+                endYear ? parseInt(endYear) : maxYear
+            ]);
+        }
       } catch (error) {
         console.error("Failed to fetch books:", error);
       }
     };
     fetchBooks();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     setQuery(searchParams.get('q') || '');
@@ -196,11 +198,7 @@ export default function SearchPage() {
           </div>
         ) : (
           <div className="flex justify-center mt-6">
-            {allBooks.length === 0 ? (
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            ) : (
-              <p className="mt-6 text-muted-foreground">No books found matching your criteria.</p>
-            )}
+            <p className="mt-6 text-muted-foreground">No books found matching your criteria.</p>
           </div>
         )}
       </div>
