@@ -9,7 +9,7 @@ import { useState, useTransition, useEffect, useMemo } from "react";
 import { searchBooks } from "@/ai/flows/search-books-flow";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Lightbulb, Loader2 } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getBooks, type Book } from "@/services/book-service";
 import { Slider } from "@/components/ui/slider";
@@ -99,10 +99,23 @@ export default function SearchPage() {
 
   const filteredResults = useMemo(() => {
     if (allBooks.length === 0) return [];
+    
+    const queryLower = query.toLowerCase();
+    
+    // Check if any filters are active
+    const noQuery = !query.trim();
+    const noAuthor = !author;
+    const noCategory = !category;
+    const isDefaultYearRange = (yearRange[0] === 1800) && (yearRange[1] === new Date().getFullYear()) && !searchParams.has('startYear');
+
+    if (noQuery && noAuthor && noCategory && isDefaultYearRange) {
+        return allBooks;
+    }
+    
     const startYear = Number(searchParams.get('startYear') || yearRange[0]);
     const endYear = Number(searchParams.get('endYear') || yearRange[1]);
+    
     return allBooks.filter(book => {
-      const queryLower = query.toLowerCase();
       const matchesQuery = query ? book.title.toLowerCase().includes(queryLower) || book.author.toLowerCase().includes(queryLower) : true;
       const matchesAuthor = author ? book.author === author : true;
       const matchesCategory = category ? book.category === category : true;
@@ -124,12 +137,6 @@ export default function SearchPage() {
       
       <div className="mb-8 space-y-4">
         <AiSearchSuggestions initialQuery={query} onAdvancedSearch={handleAdvancedSearch} isPending={isAiSearchPending} />
-         {isAiSearchPending && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Thinking...</span>
-          </div>
-        )}
         {aiReasoning && (
            <Alert>
             <Lightbulb className="h-4 w-4" />
