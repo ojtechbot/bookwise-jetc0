@@ -22,7 +22,6 @@ export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
   const [book, setBook] = useState<Book | null>(null);
   const { user, userProfile, isLoading: isAuthLoading, refreshUserProfile } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
   const [isSummaryPending, startSummaryTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [aiSummary, setAiSummary] = useState('');
@@ -31,7 +30,6 @@ export default function BookDetailsPage() {
 
   const fetchBookAndReviews = useCallback(async () => {
       if (!params.id) return;
-      setIsLoading(true);
       try {
         // First, try to find the book in the local JSON file.
         const localBook = (allBooksData as unknown as Book[]).find(b => b.id === params.id);
@@ -53,8 +51,6 @@ export default function BookDetailsPage() {
       } catch (error) {
         console.error("Failed to fetch book data:", error);
         setBook(null);
-      } finally {
-        setIsLoading(false);
       }
     }, [params.id]);
 
@@ -132,7 +128,7 @@ export default function BookDetailsPage() {
     }
   }
 
-  if (isLoading || isAuthLoading) {
+  if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
