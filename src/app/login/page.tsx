@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import defaultStaff from '@/data/staff.json';
+import { ensureDefaultUsers } from "@/services/user-service";
 
 const studentFormSchema = z.object({
   regNumber: z.string().min(1, "Registration number is required."),
@@ -108,10 +109,23 @@ export default function LoginPage() {
     }
   }
 
-  const handleQuickLogin = (staffMember: typeof defaultStaff[0]) => {
-    staffForm.setValue('email', staffMember.email);
-    staffForm.setValue('password', staffMember.password);
-    onStaffSubmit({ email: staffMember.email, password: staffMember.password });
+  const handleQuickLogin = async (staffMember: typeof defaultStaff[0]) => {
+    setIsStaffPending(true);
+    try {
+        // Ensure default users exist before attempting login
+        await ensureDefaultUsers();
+        staffForm.setValue('email', staffMember.email);
+        staffForm.setValue('password', staffMember.password);
+        await onStaffSubmit({ email: staffMember.email, password: staffMember.password });
+    } catch (error) {
+        console.error("Quick login setup failed:", error);
+        toast({
+            title: "Setup Error",
+            description: "Could not ensure default users exist. Please try again.",
+            variant: "destructive"
+        });
+        setIsStaffPending(false);
+    }
   }
 
   if (isLoading || user) {
@@ -241,9 +255,9 @@ export default function LoginPage() {
                         </form>
                     </Form>
                      <Alert className="mt-4">
-                        <AlertTitle>Quick Login (Dev)</AlertTitle>
+                        <AlertTitle>Quick Login (For Setup)</AlertTitle>
                         <AlertDescription>
-                            Use these to quickly access staff accounts.
+                            Use these to create and access staff accounts.
                         </AlertDescription>
                         <div className="mt-2 space-y-2">
                              {defaultStaff.map(staff => (

@@ -6,6 +6,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import initialBooksData from '../data/books.json';
+import defaultStaff from '../data/staff.json';
 
 // IMPORTANT: Download your service account key from Firebase Console
 // and place it in the root of your project. Rename it to 'service-account.json'.
@@ -22,77 +23,60 @@ const adminApp = !getApps().length
 const auth = getAuth(adminApp);
 const db = getFirestore(adminApp);
 
-const initialUsers = [
-  {
-    uid: 'admin-user-placeholder',
-    email: 'admin@libroweb.io',
-    password: 'admin123',
-    displayName: 'Admin User',
-    role: 'admin' as const,
-    regNumber: null,
-  },
-  {
-    uid: 'librarian-user-placeholder',
-    email: 'librarian@libroweb.io',
-    password: 'librarian123',
-    displayName: 'Librarian User',
-    role: 'librarian' as const,
-    regNumber: null,
-  },
-];
+const initialUsers = defaultStaff.map(staff => ({
+  email: staff.email,
+  password: staff.password,
+  displayName: staff.name,
+  role: staff.name.toLowerCase() as 'admin' | 'librarian',
+  regNumber: null,
+}));
+
 
 async function seedUsers() {
   console.log('Starting to seed users...');
   for (const userData of initialUsers) {
     const { email, password, displayName, role, regNumber } = userData;
-    let finalUid: string;
+    let uid: string;
 
     try {
-      // Check if user exists by email
       const userRecord = await auth.getUserByEmail(email);
-      finalUid = userRecord.uid;
+      uid = userRecord.uid;
       console.log(`User ${email} already exists. Updating password and profile.`);
-      
-      // Update password and display name to ensure they match the seed data
-      await auth.updateUser(finalUid, {
+      await auth.updateUser(uid, {
         password: password,
         displayName: displayName,
       });
-
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
-        // User does not exist, so create them
         console.log(`User ${email} not found. Creating new user.`);
         const newUserRecord = await auth.createUser({
           email,
           password,
           displayName,
         });
-        finalUid = newUserRecord.uid;
-        console.log(`Successfully created auth user: ${email}`);
+        uid = newUserRecord.uid;
+        console.log(`Successfully created auth user: ${email} with UID: ${uid}`);
       } else {
-        // For other errors, log them and skip this user
-        console.error(`Error processing auth for user ${email}:`, error);
+        console.error(`Error fetching auth user ${email}:`, error);
         continue;
       }
     }
-    
-    // Create/update the Firestore profile
+
     try {
-        const userRef = db.collection('users').doc(finalUid);
-        await userRef.set({
-            uid: finalUid,
-            name: displayName,
-            email,
-            role,
-            regNumber,
-            borrowedBooks: [],
-            createdAt: Timestamp.now(),
-            photoUrl: '',
-        }, { merge: true });
-        console.log(`Successfully created/updated Firestore profile for: ${email}`);
+      const userRef = db.collection('users').doc(uid);
+      await userRef.set({
+        uid,
+        name: displayName,
+        email,
+        role,
+        regNumber,
+        borrowedBooks: [],
+        createdAt: Timestamp.now(),
+        photoUrl: '',
+      }, { merge: true });
+      console.log(`Successfully created/updated Firestore profile for: ${email}`);
     } catch (dbError) {
-        console.error(`Error creating/updating Firestore profile for ${email}:`, dbError);
+      console.error(`Error creating/updating Firestore profile for ${email}:`, dbError);
     }
   }
   console.log('User seeding finished.');

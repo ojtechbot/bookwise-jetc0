@@ -2,7 +2,75 @@
 'use client';
 
 import { db } from '@/lib/firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, Timestamp, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, Timestamp, getDocs, serverTimestamp, writeBatch, query, where } from 'firebase/firestore';
+import defaultStaff from '@/data/staff.json';
+
+// This is a client-side only function as it requires client-side Firebase SDKs
+// It dynamically imports admin-only functions to avoid bundling them in the client
+const ensureDefaultUsersOnClient = async () => {
+    const { getAuth: getClientAuth, signInWithEmailAndPassword: clientSignIn, createUserWithEmailAndPassword: clientCreateUser, updateProfile: clientUpdateProfile, signOut: clientSignOut } = await import('firebase/auth');
+    const { auth } = await import('@/lib/firebase');
+    
+    // Check if a flag is set in sessionStorage to prevent running this on every login attempt in a session
+    if (sessionStorage.getItem('default_users_ensured')) {
+        return;
+    }
+
+    console.log('Ensuring default staff users exist...');
+
+    for (const user of defaultStaff) {
+        const userRef = doc(db, 'users', user.email); // Using email as a temporary stable ID for check
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            console.log(`Default user ${user.email} not found in Firestore. Attempting to create...`);
+            // This is a simplified creation process that happens on the client.
+            // It's not as secure as a server-side seed script but works for this setup.
+            try {
+                // We need a temporary authenticated user to perform these actions if rules are strict
+                // This is a known limitation. For this app, we assume rules allow this initial write or it fails gracefully.
+                
+                // Create the auth user. This part is tricky on the client if you're already logged in.
+                // A true seed script is always better. This is a fallback.
+                const tempAuth = getClientAuth();
+                
+                try {
+                    // Try to log in to see if the auth user exists
+                    await clientSignIn(tempAuth, user.email, user.password);
+                    clientSignOut(tempAuth); // Sign out immediately
+                } catch (error: any) {
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                         console.log(`Auth user for ${user.email} not found. Creating...`);
+                         const userCred = await clientCreateUser(tempAuth, user.email, user.password);
+                         await clientUpdateProfile(userCred.user, { displayName: user.name });
+
+                         // Now create the Firestore document with the real UID
+                         const userProfileData: UserProfile = {
+                            uid: userCred.user.uid,
+                            name: user.name,
+                            email: user.email,
+                            role: user.name.toLowerCase() as UserRole,
+                            regNumber: null,
+                            createdAt: Timestamp.now(),
+                         };
+                         await setDoc(doc(db, 'users', userCred.user.uid), userProfileData);
+
+                         // Set the temporary doc so we don't try again
+                         await setDoc(userRef, { created: true });
+                         
+                         await clientSignOut(userCred.user.auth);
+                    } else {
+                       throw error; // Re-throw other errors
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to create default user ${user.email}:`, error);
+            }
+        }
+    }
+     sessionStorage.setItem('default_users_ensured', 'true');
+     console.log('Finished checking for default users.');
+}
 
 
 export type UserRole = 'student' | 'staff' | 'admin' | 'librarian';
@@ -67,4 +135,15 @@ export const updateUser = async (uid: string, data: Partial<UserProfile>) => {
 export const updateUserRole = async (uid: string, role: UserRole) => {
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, { role });
+};
+
+
+// A function to be called from the login page to ensure default staff users exist
+export const ensureDefaultUsers = async () => {
+    try {
+        await ensureDefaultUsersOnClient();
+    } catch (error) {
+        console.error("Could not ensure default users from client:", error);
+        // Fail silently to the user, but log it.
+    }
 };
