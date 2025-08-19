@@ -4,7 +4,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,26 +18,12 @@ import { addUser } from '@/services/user-service';
 
 const registerFormSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters."),
-  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
-  regNumber: z.string().optional().or(z.literal('')),
-  role: z.enum(["student", "staff"], { required_error: "You must select a role." }),
-  password: z.string().min(6, "Password must be at least 6 characters."),
+  regNumber: z.string().min(1, "Registration number is required."),
+  password: z.string().min(6, "PIN must be at least 6 characters."),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match.",
+  message: "PINs do not match.",
   path: ["confirmPassword"],
-}).refine((data) => {
-    if (data.role === 'staff') return !!data.email;
-    return true;
-}, {
-    message: "Email is required for staff members.",
-    path: ["email"],
-}).refine((data) => {
-    if (data.role === 'student') return !!data.regNumber;
-    return true;
-}, {
-    message: "Registration number is required for students.",
-    path: ["regNumber"],
 });
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
@@ -54,22 +39,16 @@ export default function RegisterPage() {
     resolver: zodResolver(registerFormSchema),
     defaultValues: {
       fullName: "",
-      email: "",
       regNumber: "",
       password: "",
       confirmPassword: "",
     }
   });
 
-  const selectedRole = form.watch("role");
-
   const onSubmit: SubmitHandler<RegisterFormValues> = async (data) => {
     setIsPending(true);
     try {
-      const email = data.role === 'staff'
-        ? data.email!
-        : `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
-      
+      const email = `${data.regNumber}@${STUDENT_EMAIL_DOMAIN}`;
       const password = data.password;
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -81,7 +60,7 @@ export default function RegisterPage() {
         uid: user.uid,
         name: data.fullName,
         email: user.email!,
-        role: data.role as 'student' | 'staff',
+        role: 'student',
         regNumber: data.regNumber || null,
       });
 
@@ -106,7 +85,7 @@ export default function RegisterPage() {
     <div className="container mx-auto flex items-center justify-center py-12 px-4 md:px-6 min-h-[calc(100vh-12rem)]">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
+          <CardTitle className="font-headline text-2xl">Create a Student Account</CardTitle>
           <CardDescription>Join Libroweb to access thousands of digital resources.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -128,64 +107,24 @@ export default function RegisterPage() {
               
               <FormField
                 control={form.control}
-                name="role"
+                name="regNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>I am a...</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="staff">Staff Member</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Registration Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., 20240001" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              {selectedRole === 'staff' && (
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="john.doe@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {selectedRole === 'student' && (
-                <FormField
-                  control={form.control}
-                  name="regNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Registration Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 20240001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
 
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{selectedRole === 'student' ? 'PIN (must be at least 6 characters)' : 'Password'}</FormLabel>
+                    <FormLabel>PIN (must be at least 6 characters)</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -198,7 +137,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{selectedRole === 'student' ? 'Confirm PIN' : 'Confirm Password'}</FormLabel>
+                    <FormLabel>Confirm PIN</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -220,5 +159,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-    
