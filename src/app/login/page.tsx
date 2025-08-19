@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import defaultStaff from '@/data/staff.json';
 
 const studentFormSchema = z.object({
   regNumber: z.string().min(1, "Registration number is required."),
@@ -31,11 +32,6 @@ const staffFormSchema = z.object({
 });
 
 type StaffFormValues = z.infer<typeof staffFormSchema>;
-
-const defaultStaff = [
-    { name: 'Admin', email: 'admin@libroweb.io', password: 'admin123' },
-    { name: 'Librarian', email: 'librarian@libroweb.io', password: 'librarian123' },
-];
 
 const STUDENT_EMAIL_DOMAIN = 'student.libroweb.io';
 

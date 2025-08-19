@@ -1,0 +1,4 @@
+[
+    { "name": "Admin", "email": "admin@libroweb.io", "password": "admin123" },
+    { "name": "Librarian", "email": "librarian@libroweb.io", "password": "librarian123" }
+]
