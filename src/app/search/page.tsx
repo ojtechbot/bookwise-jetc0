@@ -26,11 +26,9 @@ export default function SearchPage() {
   const [isAiSearchPending, startAiSearchTransition] = useTransition();
 
   const [allBooks, setAllBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchBooks = async () => {
-      setIsLoading(true);
       try {
         const books = await getBooks();
         setAllBooks(books);
@@ -45,8 +43,6 @@ export default function SearchPage() {
         ]);
       } catch (error) {
         console.error("Failed to fetch books:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
     fetchBooks();
@@ -100,6 +96,7 @@ export default function SearchPage() {
   }
 
   const filteredResults = useMemo(() => {
+    if (allBooks.length === 0) return [];
     const startYear = Number(searchParams.get('startYear') || yearRange[0]);
     const endYear = Number(searchParams.get('endYear') || yearRange[1]);
     return allBooks.filter(book => {
@@ -184,7 +181,6 @@ export default function SearchPage() {
                     max={new Date().getFullYear()}
                     step={1}
                     className="w-full"
-                    disabled={isLoading}
                 />
             </div>
         </div>
@@ -192,18 +188,20 @@ export default function SearchPage() {
 
       <div>
         <h2 className="text-2xl font-bold">Results {filteredResults.length > 0 ? `(${filteredResults.length})` : ''}</h2>
-        {isLoading ? (
-           <div className="flex justify-center mt-6">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-           </div>
-        ) : filteredResults.length > 0 ? (
+        {filteredResults.length > 0 ? (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
             {filteredResults.map(book => (
               <BookCard key={book.id} {...book} />
             ))}
           </div>
         ) : (
-          <p className="mt-6 text-muted-foreground">No books found matching your criteria.</p>
+          <div className="flex justify-center mt-6">
+            {allBooks.length === 0 ? (
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            ) : (
+              <p className="mt-6 text-muted-foreground">No books found matching your criteria.</p>
+            )}
+          </div>
         )}
       </div>
     </div>
