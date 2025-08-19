@@ -218,7 +218,7 @@ export default function LoginPage() {
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                <Input type="email" placeholder="admin@libroweb.io" {...field} disabled={isStaffPending} />
+                                <Input type="email" {...field} disabled={isStaffPending} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

@@ -43,7 +43,7 @@ export function Header() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      router.push('/login');
+      router.push('/');
     } catch (error) {
       console.error("Logout failed:", error);
       toast({
