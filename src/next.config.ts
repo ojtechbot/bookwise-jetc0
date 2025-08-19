@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
     ],
   },
   devIndicators: {
-    buildActivity: false, // Disables the Next.js build activity indicator
+    buildActivity: false,
   },
 };
 
