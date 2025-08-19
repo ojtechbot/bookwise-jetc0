@@ -223,11 +223,18 @@ export default function Home() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {latestBooks.map(book => (
-                <BookCard key={book.id} {...book} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                {latestBooks.map(book => (
+                  <BookCard key={book.id} {...book} />
+                ))}
+              </div>
+              <div className="mt-12 text-center">
+                  <Button asChild variant="outline" size="lg">
+                      <Link href="/search">View More</Link>
+                  </Button>
+              </div>
+            </>
           )}
         </div>
       </section>
