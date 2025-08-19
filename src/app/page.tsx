@@ -26,16 +26,13 @@ const categories = [
 export default function Home() {
   const [allBooks, setAllBooks] = useState<BookType[]>([]);
   const [latestBooks, setLatestBooks] = useState<BookType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      setIsLoading(true);
       try {
-        // Fetch latest books and all other books in parallel for speed
         const [latest, all] = await Promise.all([
           getBooks('createdAt', 'desc', 4),
           getBooks()
@@ -44,8 +41,6 @@ export default function Home() {
         setAllBooks(all);
       } catch (error) {
         console.error("Failed to fetch books:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
     fetchInitialData();
@@ -132,7 +127,7 @@ export default function Home() {
         </div>
       </section>
 
-      {featuredBook && !isLoading && (
+      {featuredBook && (
          <section className="w-full py-16 md:py-24">
             <div className="container mx-auto px-4 md:px-6">
                 <h2 className="text-3xl font-bold text-center text-primary">Featured Book</h2>
@@ -212,11 +207,7 @@ export default function Home() {
           <p className="text-center mt-2 mb-8 text-foreground/70">
             Check out the newest books added to our collection.
           </p>
-          {isLoading ? (
-             <div className="flex justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-             </div>
-          ) : (
+          {latestBooks.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 {latestBooks.map(book => (
@@ -229,6 +220,10 @@ export default function Home() {
                   </Button>
               </div>
             </>
+          ) : (
+             <div className="flex justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+             </div>
           )}
         </div>
       </section>
