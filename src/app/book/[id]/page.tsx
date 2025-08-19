@@ -17,6 +17,7 @@ import { ReviewForm } from '@/components/review-form';
 import { ReviewList, type Review } from '@/components/review-list';
 import { useParams } from 'next/navigation';
 import allBooksData from '@/data/books.json';
+import { useLibraryStore } from '@/store/library-store';
 
 export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -25,6 +26,9 @@ export default function BookDetailsPage() {
   const [aiSummary, setAiSummary] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
   const { toast } = useToast();
+  
+  const { borrowedBooks, borrowBook: borrowBookAction, returnBook: returnBookAction } = useLibraryStore();
+  const isBorrowedByUser = useMemo(() => borrowedBooks.includes(params.id), [borrowedBooks, params.id]);
 
   const book: Book | null = useMemo(() => {
     if (!params.id) return null;
@@ -35,7 +39,7 @@ export default function BookDetailsPage() {
   const fetchReviews = useCallback(async () => {
     if (!params.id) return;
     try {
-      // Review fetching can remain as it's a read operation
+      // Review fetching can remain as it might use a live database
       const reviewsData = await getReviews(params.id);
       setReviews(reviewsData);
     } catch (error) {
@@ -63,16 +67,14 @@ export default function BookDetailsPage() {
 
   const handleBorrow = () => {
     if (!book) return;
-    // Firestore logic removed as per request.
-    console.log(`Borrowing "${book.title}"`);
-    alert(`Borrowing "${book.title}" (simulation).`);
+    borrowBookAction(book.id);
+    toast({ title: "Book Borrowed!", description: `You have borrowed "${book.title}".` });
   };
 
   const handleReturn = () => {
      if (!book) return;
-    // Firestore logic removed as per request.
-    console.log(`Returning "${book.title}"`);
-    alert(`Returning "${book.title}" (simulation).`);
+    returnBookAction(book.id);
+    toast({ title: "Book Returned!", description: `You have returned "${book.title}".` });
   };
 
   const handleReviewSubmit = async (rating: number, comment: string) => {
@@ -107,9 +109,6 @@ export default function BookDetailsPage() {
     );
   }
   
-  // Client-side simulation of borrowed status would go here if needed.
-  // For now, we'll assume it's not borrowed.
-  const isBorrowedByUser = false; 
   const isAvailable = book.availableCopies > 0;
   const hasUserReviewed = user ? reviews.some(r => r.userId === user.uid) : false;
 
