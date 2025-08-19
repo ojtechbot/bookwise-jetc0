@@ -11,8 +11,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getBooks, type Book } from "@/services/book-service";
+import { type Book } from "@/services/book-service";
 import { Slider } from "@/components/ui/slider";
+import initialBooksData from '@/data/books.json';
+
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
@@ -25,14 +27,11 @@ export default function SearchPage() {
   const [aiReasoning, setAiReasoning] = useState('');
   const [isAiSearchPending, startAiSearchTransition] = useTransition();
 
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const allBooks: Book[] = useMemo(() => initialBooksData as unknown as Book[], []);
 
   useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const books = await getBooks();
-        setAllBooks(books);
-        const years = books.map(b => b.publishedYear).filter(y => y);
+    if (allBooks.length > 0) {
+        const years = allBooks.map(b => b.publishedYear).filter(y => y);
         if (years.length > 0) {
             const minYear = Math.min(...years);
             const maxYear = Math.max(...years);
@@ -43,12 +42,8 @@ export default function SearchPage() {
                 endYear ? parseInt(endYear) : maxYear
             ]);
         }
-      } catch (error) {
-        console.error("Failed to fetch books:", error);
-      }
-    };
-    fetchBooks();
-  }, [searchParams]);
+    }
+  }, [allBooks, searchParams]);
 
   useEffect(() => {
     setQuery(searchParams.get('q') || '');
