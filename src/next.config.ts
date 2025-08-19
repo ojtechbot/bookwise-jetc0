@@ -23,10 +23,16 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
   devIndicators: {
-    buildActivity: false,
+    buildActivity: false, // Disables the Next.js build activity indicator
   },
 };
 
