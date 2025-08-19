@@ -11,7 +11,6 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { getBooks, getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
-import { Timestamp } from "firebase/firestore";
 import Image from "next/image";
 
 
@@ -26,6 +25,7 @@ const categories = [
 
 export default function Home() {
   const [allBooks, setAllBooks] = useState<BookType[]>([]);
+  const [latestBooks, setLatestBooks] = useState<BookType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
@@ -35,10 +35,15 @@ export default function Home() {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        const books = await getBooks();
-        setAllBooks(books);
+        // Fetch latest books and all other books in parallel for speed
+        const [latest, all] = await Promise.all([
+          getBooks('createdAt', 'desc', 4),
+          getBooks()
+        ]);
+        setLatestBooks(latest);
+        setAllBooks(all);
       } catch (error) {
-        console.error("Failed to fetch latest books:", error);
+        console.error("Failed to fetch books:", error);
       } finally {
         setIsLoading(false);
       }
@@ -81,17 +86,6 @@ export default function Home() {
       setIsRecommendationsLoading(false);
     }
   }, [userProfile, allBooks]);
-  
-  const latestBooks = useMemo(() => {
-    // Sort by createdAt timestamp in descending order and take the first 4
-    return [...allBooks]
-      .sort((a, b) => {
-          const timeA = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
-      })
-      .slice(0, 4);
-  }, [allBooks]);
   
   const popularBooks = useMemo(() => {
     // Sort by reviewCount in descending order and take the first 4
@@ -138,7 +132,7 @@ export default function Home() {
         </div>
       </section>
 
-      {featuredBook && (
+      {featuredBook && !isLoading && (
          <section className="w-full py-16 md:py-24">
             <div className="container mx-auto px-4 md:px-6">
                 <h2 className="text-3xl font-bold text-center text-primary">Featured Book</h2>

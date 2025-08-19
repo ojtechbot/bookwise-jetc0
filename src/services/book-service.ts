@@ -58,18 +58,24 @@ export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availab
 };
 
 // READ ALL
-export const getBooks = async (sortBy: string = 'createdAt', order: 'desc' | 'asc' = 'desc'): Promise<Book[]> => {
-    let q = query(booksCollection, orderBy(sortBy, order));
-
+export const getBooks = async (sortBy: string = 'createdAt', order: 'desc' | 'asc' = 'desc', count?: number): Promise<Book[]> => {
+    let q;
+    
     // Handle popularity sort (mock for now)
     if (sortBy === 'popularity') {
        q = query(booksCollection, orderBy('totalCopies', 'desc'));
+    } else {
+       q = query(booksCollection, orderBy(sortBy, order));
+    }
+
+    if (count) {
+        q = query(q, limit(count));
     }
 
     const snapshot = await getDocs(q);
     
     // If the database is empty, seed it with initial data
-    if (snapshot.empty) {
+    if (snapshot.empty && !count) { // Only seed if we are fetching all books and it's empty
         console.log("No books found in Firestore, seeding initial data...");
         await seedInitialBooks();
         // Fetch again after seeding
