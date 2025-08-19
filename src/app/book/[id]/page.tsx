@@ -8,9 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { Download, BookOpen, Lightbulb, Loader2, History, Star, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useState, useTransition, useEffect, useCallback } from 'react';
+import { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
-import { getBook, borrowBook, returnBook, type Book, submitReview, getReviews } from '@/services/book-service';
+import { borrowBook, returnBook, type Book, submitReview, getReviews } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
@@ -20,7 +20,6 @@ import allBooksData from '@/data/books.json';
 
 export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
-  const [book, setBook] = useState<Book | null>(null);
   const { user, userProfile, isLoading: isAuthLoading, refreshUserProfile } = useAuth();
   const [isSummaryPending, startSummaryTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
@@ -28,35 +27,26 @@ export default function BookDetailsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const { toast } = useToast();
 
-  const fetchBookAndReviews = useCallback(async () => {
-      if (!params.id) return;
-      try {
-        // First, try to find the book in the local JSON file.
-        const localBook = (allBooksData as unknown as Book[]).find(b => b.id === params.id);
-        
-        let bookData = localBook || null;
-        
-        // If not found locally, fetch from the database
-        if (!bookData) {
-            bookData = await getBook(params.id);
-        }
+  const book: Book | null = useMemo(() => {
+    if (!params.id) return null;
+    return (allBooksData as unknown as Book[]).find(b => b.id === params.id) || null;
+  }, [params.id]);
 
-        let reviewsData: Review[] = [];
-        if (bookData) { // Only fetch reviews if a book was found
-            reviewsData = await getReviews(params.id);
-        }
-        
-        setBook(bookData);
-        setReviews(reviewsData);
-      } catch (error) {
-        console.error("Failed to fetch book data:", error);
-        setBook(null);
-      }
-    }, [params.id]);
+
+  const fetchReviews = useCallback(async () => {
+    if (!params.id) return;
+    try {
+      const reviewsData = await getReviews(params.id);
+      setReviews(reviewsData);
+    } catch (error) {
+      console.error("Failed to fetch reviews:", error);
+    }
+  }, [params.id]);
+
 
   useEffect(() => {
-    fetchBookAndReviews();
-  }, [fetchBookAndReviews]);
+    fetchReviews();
+  }, [fetchReviews]);
   
   const handleGenerateSummary = () => {
     if (!book) return;
@@ -76,8 +66,6 @@ export default function BookDetailsPage() {
     startActionTransition(async () => {
         try {
             await borrowBook(book.id, user.uid);
-            const updatedBook = await getBook(book.id);
-            setBook(updatedBook);
             await refreshUserProfile();
             toast({ title: 'Success!', description: `You have borrowed "${book.title}".` });
         } catch (error: any) {
@@ -92,8 +80,6 @@ export default function BookDetailsPage() {
     startActionTransition(async () => {
         try {
             await returnBook(book.id, user.uid);
-            const updatedBook = await getBook(book.id);
-            setBook(updatedBook);
             await refreshUserProfile();
             toast({ title: 'Success!', description: `You have returned "${book.title}".` });
         } catch (error: any) {
@@ -115,11 +101,7 @@ export default function BookDetailsPage() {
       });
       toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
       // Refresh reviews
-      const reviewsData = await getReviews(params.id);
-      setReviews(reviewsData);
-      // Refresh book data to get new average rating
-      const bookData = await getBook(params.id);
-      setBook(bookData);
+      await fetchReviews();
       return true;
     } catch (error: any) {
       console.error("Failed to submit review:", error);
@@ -127,15 +109,7 @@ export default function BookDetailsPage() {
       return false;
     }
   }
-
-  if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
-
+  
   if (!book) {
     return (
       <div className="container mx-auto py-12 px-4 md:px-6 text-center">
