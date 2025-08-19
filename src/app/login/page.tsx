@@ -91,6 +91,7 @@ export default function LoginPage() {
   const onStaffSubmit: SubmitHandler<StaffFormValues> = async (data) => {
     setIsStaffPending(true);
     try {
+      await ensureDefaultUsers();
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({
         title: "Login Successful",
@@ -110,22 +111,9 @@ export default function LoginPage() {
   }
 
   const handleQuickLogin = async (staffMember: typeof defaultStaff[0]) => {
-    setIsStaffPending(true);
-    try {
-        // Ensure default users exist before attempting login
-        await ensureDefaultUsers();
-        staffForm.setValue('email', staffMember.email);
-        staffForm.setValue('password', staffMember.password);
-        await onStaffSubmit({ email: staffMember.email, password: staffMember.password });
-    } catch (error) {
-        console.error("Quick login setup failed:", error);
-        toast({
-            title: "Setup Error",
-            description: "Could not ensure default users exist. Please try again.",
-            variant: "destructive"
-        });
-        setIsStaffPending(false);
-    }
+    staffForm.setValue('email', staffMember.email);
+    staffForm.setValue('password', staffMember.password);
+    await onStaffSubmit({ email: staffMember.email, password: staffMember.password });
   }
 
   if (isLoading || user) {
@@ -218,7 +206,7 @@ export default function LoginPage() {
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                <Input type="email" {...field} disabled={isStaffPending} />
+                                <Input type="email" placeholder="enter your email here" {...field} disabled={isStaffPending} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -255,14 +243,14 @@ export default function LoginPage() {
                         </form>
                     </Form>
                      <Alert className="mt-4">
-                        <AlertTitle>Quick Login (For Setup)</AlertTitle>
+                        <AlertTitle>Quick Login (For Dev)</AlertTitle>
                         <AlertDescription>
-                            Use these to create and access staff accounts.
+                            Use these to access default staff accounts.
                         </AlertDescription>
                         <div className="mt-2 space-y-2">
                              {defaultStaff.map(staff => (
                                 <Button key={staff.name} variant="outline" size="sm" className="w-full" onClick={() => handleQuickLogin(staff)} disabled={isStaffPending}>
-                                    {isStaffPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isStaffPending && staffForm.getValues().email === staff.email && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Log in as {staff.name}
                                 </Button>
                             ))}
