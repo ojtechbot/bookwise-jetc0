@@ -40,7 +40,6 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, isStudent, isLoading } = useAuth();
-  const [isDataLoading, setIsDataLoading] = useState(true);
   const [books, setBooks] = useState<BookType[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [requests, setRequests] = useState<BookRequest[]>([]);
@@ -48,7 +47,6 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   const fetchData = async () => {
-    setIsDataLoading(true);
     try {
       const [booksData, usersData, requestsData] = await Promise.all([
         getBooks(), 
@@ -60,8 +58,6 @@ export default function AdminDashboardPage() {
       setRequests(requestsData);
     } catch (error) {
       console.error("Failed to fetch data:", error);
-    } finally {
-      setIsDataLoading(false);
     }
   }
   
@@ -124,7 +120,7 @@ export default function AdminDashboardPage() {
                   <Book className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : books.length}</div>
+                  <div className="text-2xl font-bold">{books.length}</div>
                   <p className="text-xs text-muted-foreground">in the entire catalog</p>
               </CardContent>
           </Card>
@@ -134,8 +130,8 @@ export default function AdminDashboardPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : users.length}</div>
-                   <p className="text-xs text-muted-foreground">{isDataLoading ? '...' : `${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role !== 'student').length} staff`}</p>
+                  <div className="text-2xl font-bold">{users.length}</div>
+                   <p className="text-xs text-muted-foreground">{`${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role !== 'student').length} staff`}</p>
               </CardContent>
           </Card>
            <Card>
@@ -144,7 +140,7 @@ export default function AdminDashboardPage() {
                     <FileQuestion className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : requests.length}</div>
+                    <div className="text-2xl font-bold">{requests.length}</div>
                     <p className="text-xs text-muted-foreground">new book requests from students</p>
                 </CardContent>
            </Card>
@@ -154,7 +150,7 @@ export default function AdminDashboardPage() {
                   <BarChart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : chartData.reduce((acc, item) => acc + item.borrows, 0)}</div>
+                  <div className="text-2xl font-bold">{chartData.reduce((acc, item) => acc + item.borrows, 0)}</div>
                   <p className="text-xs text-muted-foreground">Total borrows this year</p>
               </CardContent>
           </Card>
@@ -167,11 +163,6 @@ export default function AdminDashboardPage() {
             <CardDescription>Breakdown of books by genre.</CardDescription>
           </CardHeader>
           <CardContent>
-             {isDataLoading ? (
-                 <div className="flex justify-center items-center p-8 min-h-[300px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                 </div>
-              ) : (
                 <ChartContainer config={{}} className="min-h-[300px] w-full">
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
@@ -185,7 +176,6 @@ export default function AdminDashboardPage() {
                         </PieChart>
                     </ResponsiveContainer>
                 </ChartContainer>
-             )}
           </CardContent>
         </Card>
         <Card>
@@ -230,11 +220,6 @@ export default function AdminDashboardPage() {
               <CardDescription>Upload, categorize, or delete ebooks from the library.</CardDescription>
             </CardHeader>
             <CardContent>
-              {isDataLoading ? (
-                 <div className="flex justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                 </div>
-              ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -266,7 +251,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -277,11 +261,6 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage all registered users.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isDataLoading ? (
-                 <div className="flex justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                 </div>
-              ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -314,7 +293,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -325,11 +303,6 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage book requests submitted by students.</CardDescription>
             </CardHeader>
             <CardContent>
-               {isDataLoading ? (
-                 <div className="flex justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                 </div>
-              ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -363,7 +336,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -371,3 +343,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
