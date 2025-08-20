@@ -14,6 +14,7 @@ import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-
 import Image from "next/image";
 import initialBooksData from '@/data/books.json';
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 
 const categories = [
@@ -247,6 +248,45 @@ export default function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+      
+      <section className="w-full py-16 md:py-24">
+        <div className="container mx-auto px-4 md:px-6 max-w-3xl">
+          <h2 className="text-3xl font-bold text-center text-primary">Frequently Asked Questions</h2>
+          <p className="text-center mt-2 mb-8 text-foreground/70">Find answers to common questions about our digital library.</p>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>How do I register for an account?</AccordionTrigger>
+              <AccordionContent>
+                Students can register by clicking the "Register" button on the top right of the homepage. You will need your full name and student registration number. Staff and admins are pre-registered and can log in with their provided credentials.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>How do I borrow a book?</AccordionTrigger>
+              <AccordionContent>
+                To borrow a book, simply navigate to the book's detail page and click the "Borrow Book" button. The book will then be added to the "Borrowed" section of your student dashboard. You must be logged in to borrow a book.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>What is the borrowing period?</AccordionTrigger>
+              <AccordionContent>
+                The standard borrowing period for all ebooks is 14 days. After this period, the book will be automatically returned from your dashboard, but you can borrow it again if it's available.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger>Can I request a book that isn't in the library?</AccordionTrigger>
+              <AccordionContent>
+                Yes! If you are a student, you can go to the "Requests" tab on your dashboard and fill out the form to request a new book. Our librarians will review the request.
+              </AccordionContent>
+            </AccordionItem>
+             <AccordionItem value="item-5">
+              <AccordionTrigger>Who do I contact for technical support?</AccordionTrigger>
+              <AccordionContent>
+                For any technical issues with the digital library, please visit the "Contact" page and reach out to us via the provided email or phone number during working hours.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
     </div>
