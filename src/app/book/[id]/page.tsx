@@ -41,7 +41,7 @@ export default function BookDetailsPage() {
     try {
       // Review fetching can remain as it might use a live database
       const reviewsData = await getReviews(params.id);
-      setReviews(reviewsData);
+      setReviews(reviewsData as Review[]);
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
     }

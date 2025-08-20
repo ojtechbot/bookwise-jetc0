@@ -63,7 +63,7 @@ export const getBooks = async (sortBy: string = 'createdAt', order: 'desc' | 'as
     
     // Handle popularity sort (mock for now)
     if (sortBy === 'popularity') {
-       q = query(booksCollection, orderBy('totalCopies', 'desc'));
+       q = query(booksCollection, orderBy('reviewCount', 'desc'));
     } else {
        q = query(booksCollection, orderBy(sortBy, order));
     }
@@ -283,7 +283,7 @@ export const getBookRequests = async (status: 'pending' | 'archived' = 'pending'
 };
 
 export const archiveBookRequest = async (id: string) => {
-    const requestRef = doc(requestsCollection, id);
+    const requestRef = doc(db, 'bookRequests', id);
     await updateDoc(requestRef, { status: 'archived' });
 };
 

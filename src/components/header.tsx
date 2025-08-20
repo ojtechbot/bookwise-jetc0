@@ -172,19 +172,20 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-             <div className="flex items-center gap-2">
-              <Button variant="ghost" asChild>
-                <Link href="/login">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Login
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link href="/register">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Register
-                </Link>
-              </Button>
+             <div className="hidden md:flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button>Get Started</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem asChild>
+                             <Link href="/login"><LogIn className="mr-2 h-4 w-4" /> Login</Link>
+                        </DropdownMenuItem>
+                         <DropdownMenuItem asChild>
+                            <Link href="/register"><UserPlus className="mr-2 h-4 w-4" /> Register</Link>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
           )}
         </div>
