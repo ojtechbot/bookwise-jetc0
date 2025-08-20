@@ -67,10 +67,10 @@ export default function RegisterPage() {
       
       toast({
         title: "Registration Successful!",
-        description: "Your account has been created. You can now log in.",
+        description: "Your account has been created. Redirecting to your dashboard.",
       });
       
-      router.push('/login');
+      router.push('/dashboard');
       
     } catch (error: any) {
       console.error("Registration failed:", error);
