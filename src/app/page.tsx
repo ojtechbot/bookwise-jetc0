@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { BookCard } from "@/components/book-card";
 import Link from "next/link";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { getBooks, getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
@@ -15,6 +15,8 @@ import Image from "next/image";
 import initialBooksData from '@/data/books.json';
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
 
 const categories = [
@@ -28,13 +30,17 @@ const categories = [
 
 const latestBooks = [...initialBooksData]
     .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds)
-    .slice(0, 4) as unknown as BookType[];
+    .slice(0, 8) as unknown as BookType[];
 
 export default function Home() {
   const [allBooks, setAllBooks] = useState<BookType[]>([]);
   const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
+
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: true })
+  );
 
   useEffect(() => {
     const fetchAllBooks = async () => {
@@ -210,23 +216,32 @@ export default function Home() {
             Check out the newest books added to our collection.
           </p>
           {latestBooks.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                {latestBooks.map(book => (
-                  <BookCard key={book.id} {...book} />
-                ))}
-              </div>
-              <div className="mt-12 text-center">
-                  <Button asChild variant="outline" size="lg">
-                      <Link href="/search">View More</Link>
-                  </Button>
-              </div>
-            </>
+            <Carousel
+                plugins={[autoplayPlugin.current]}
+                className="w-full"
+                onMouseEnter={autoplayPlugin.current.stop}
+                onMouseLeave={autoplayPlugin.current.reset}
+                >
+                <CarouselContent>
+                    {latestBooks.map(book => (
+                        <CarouselItem key={book.id} className="md:basis-1/2 lg:basis-1/4">
+                            <div className="p-1">
+                                <BookCard {...book} />
+                            </div>
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+            </Carousel>
           ) : (
              <div className="flex justify-center">
                 <p className="text-muted-foreground">Could not load latest books.</p>
              </div>
           )}
+           <div className="mt-12 text-center">
+              <Button asChild variant="outline" size="lg">
+                  <Link href="/search">View All Books</Link>
+              </Button>
+          </div>
         </div>
       </section>
 
