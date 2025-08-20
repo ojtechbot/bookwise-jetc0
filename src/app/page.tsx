@@ -13,6 +13,7 @@ import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
 import Image from "next/image";
 import initialBooksData from '@/data/books.json';
+import { Badge } from "@/components/ui/badge";
 
 
 const categories = [
