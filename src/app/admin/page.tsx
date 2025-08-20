@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useTransition } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getBooks, type Book as BookType, getBookRequests, type BookRequest, archiveBookRequest } from '@/services/book-service';
 import { AddBookDialog } from '@/app/add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
@@ -43,7 +43,6 @@ export default function AdminDashboardPage() {
   const [books, setBooks] = useState<BookType[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [requests, setRequests] = useState<BookRequest[]>([]);
-  const [isArchivePending, startArchiveTransition] = useTransition();
   const { toast } = useToast();
 
   const fetchData = async () => {
@@ -79,17 +78,20 @@ export default function AdminDashboardPage() {
     return Object.entries(counts).map(([name, value], index) => ({ name, value, fill: COLORS[index % COLORS.length] }));
   }, [books]);
 
-  const handleArchiveRequest = (id: string) => {
-    startArchiveTransition(async () => {
-        try {
-            await archiveBookRequest(id!);
-            toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
-            setRequests(prev => prev.filter(r => r.id !== id));
-        } catch (error) {
-            console.error("Failed to archive request", error);
-            toast({ title: "Error", description: "Could not archive the request.", variant: "destructive" });
-        }
-    });
+  const handleArchiveRequest = async (id: string) => {
+    // Optimistically update the UI
+    const originalRequests = requests;
+    setRequests(prev => prev.filter(r => r.id !== id));
+    toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
+
+    try {
+        await archiveBookRequest(id!);
+    } catch (error) {
+        // If the API call fails, revert the UI and show an error
+        setRequests(originalRequests);
+        console.error("Failed to archive request", error);
+        toast({ title: "Error", description: "Could not archive the request. Please try again.", variant: "destructive" });
+    }
   }
 
   if (isLoading || !user) {
@@ -322,8 +324,8 @@ export default function AdminDashboardPage() {
                         <TableCell className="max-w-xs truncate">{request.reason}</TableCell>
                         <TableCell>{formatDistanceToNow(request.createdAt.toDate(), { addSuffix: true })}</TableCell>
                         <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)} disabled={isArchivePending}>
-                                {isArchivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)}>
+                                <Archive className="h-4 w-4" />
                                 <span className="sr-only">Archive</span>
                             </Button>
                         </TableCell>
