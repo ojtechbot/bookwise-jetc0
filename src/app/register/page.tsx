@@ -14,6 +14,8 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { addUser } from '@/services/user-service';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
 
 const registerFormSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters."),
