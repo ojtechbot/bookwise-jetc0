@@ -131,7 +131,11 @@ export function Header() {
                 {isLoggedIn && !isStudent && <NavLink href="/admin">Admin</NavLink>}
               </nav>
                <div className="mt-auto p-4">
-                  <Button variant="outline" className="w-full" onClick={handleLogout}>Log Out</Button>
+                  {isLoggedIn && (
+                    <Button variant="outline" className="w-full" onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" /> Log Out
+                    </Button>
+                  )}
                </div>
             </SheetContent>
           </Sheet>
