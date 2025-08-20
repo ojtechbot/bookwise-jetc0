@@ -3,8 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import './components/ui/animated-check.css';
-
 body {
   font-family: 'Roboto', sans-serif;
 }

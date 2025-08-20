@@ -14,7 +14,6 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { addUser } from '@/services/user-service';
-import { SuccessDialog } from "@/components/success-dialog";
 
 const registerFormSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters."),
@@ -34,7 +33,6 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
@@ -67,7 +65,12 @@ export default function RegisterPage() {
         })
       ]);
       
-      setShowSuccessDialog(true);
+      toast({
+        title: "Registration Successful!",
+        description: "Your account has been created. You can now log in.",
+      });
+      
+      router.push('/login');
       
     } catch (error: any) {
       console.error("Registration failed:", error);
@@ -80,21 +83,8 @@ export default function RegisterPage() {
       setIsPending(false);
     }
   };
-  
-  const handleContinue = () => {
-    setShowSuccessDialog(false);
-    router.push('/login');
-  }
 
   return (
-    <>
-      <SuccessDialog 
-        open={showSuccessDialog}
-        onOpenChange={setShowSuccessDialog}
-        title="Registration Successful!"
-        description="Your account has been created. You can now log in with your credentials."
-        onContinue={handleContinue}
-      />
       <div className="container mx-auto flex items-center justify-center py-12 px-4 md:px-6 min-h-[calc(100vh-12rem)]">
         <Card className="w-full max-w-md">
           <CardHeader>
@@ -170,6 +160,5 @@ export default function RegisterPage() {
           </CardContent>
         </Card>
       </div>
-    </>
   );
 }
