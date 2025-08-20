@@ -22,7 +22,7 @@ import { ensureDefaultUsers } from "@/services/user-service";
 
 const studentFormSchema = z.object({
   regNumber: z.string().min(1, "Registration number is required."),
-  pin: z.string().min(4, "PIN must be at least 4 characters."),
+  pin: z.string().min(6, "PIN must be at least 6 characters."),
 });
 
 type StudentFormValues = z.infer<typeof studentFormSchema>;
@@ -140,7 +140,7 @@ export default function LoginPage() {
                     <CardDescription>Enter your registration number and PIN to access your dashboard.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                <Form {...studentForm}>
+                <Form {...form}>
                     <form onSubmit={studentForm.handleSubmit(onStudentSubmit)} className="space-y-4">
                     <FormField
                         control={studentForm.control}
@@ -163,7 +163,7 @@ export default function LoginPage() {
                             <FormLabel>PIN</FormLabel>
                             <div className="relative">
                                 <FormControl>
-                                <Input type={showPassword ? "text" : "password"} placeholder="****" {...field} disabled={isStudentPending} />
+                                <Input type={showPassword ? "text" : "password"} placeholder="••••••" {...field} disabled={isStudentPending} />
                                 </FormControl>
                                 <Button
                                     type="button"
