@@ -83,6 +83,30 @@ export default function ContactPage() {
             </CardContent>
           </Card>
         </section>
+
+        {/* Google Map Section */}
+        <section className="mt-24 max-w-4xl mx-auto">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Find Us On The Map</CardTitle>
+                    <CardDescription>Get directions to our campus.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden">
+                        <iframe
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3971.603330689366!2d7.71400677587784!3d5.193295837267491!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1042b329079eb71d%3A0xf5266d76192953cf!2sFoundation%20Polytechnic%2C%20Ikot%20Ekpene!5e0!3m2!1sen!2sng!4v1680000000000"
+                            width="100%"
+                            height="450"
+                            style={{ border: 0 }}
+                            allowFullScreen={true}
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title="Foundation Polytechnic Location"
+                        ></iframe>
+                    </div>
+                </CardContent>
+            </Card>
+        </section>
       </div>
     </div>
   );
