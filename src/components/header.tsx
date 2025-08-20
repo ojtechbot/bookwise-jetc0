@@ -82,7 +82,7 @@ export function Header() {
                <SheetHeader>
                 <SheetTitle>
                   <Link href="/" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setIsSheetOpen(false)}>
-                    <Image src="/images/logo.png" alt="Foundation Polytechnic Logo" width={160} height={40} className="h-8 w-auto" />
+                    <Image src="/images/logo.png" alt="Foundation Polytechnic Logo" width={160} height={40} className="h-auto w-40" />
                   </Link>
                 </SheetTitle>
               </SheetHeader>
