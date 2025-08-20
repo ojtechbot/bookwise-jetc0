@@ -2,8 +2,10 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { BookMarked, BrainCircuit, Users } from 'lucide-react';
+import { BookMarked, BrainCircuit, Users, Target, Eye, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function AboutPage() {
   return (
@@ -15,6 +17,11 @@ export default function AboutPage() {
           <p className="mt-4 max-w-3xl mx-auto text-lg md:text-xl text-foreground/80">
             A world-class polytechnic dedicated to developing the next generation of Hi-Tech industry leaders.
           </p>
+            <Button asChild size="lg" className="mt-8">
+              <Link href="https://www.efacility.foundationpoly.edu.ng/Student/" target="_blank" rel="noopener noreferrer">
+                Go to Student Portal <ExternalLink className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
           <div className="mt-8 bg-primary/10 py-8 rounded-lg">
             <Image
               src="/images/logo.png"
@@ -68,6 +75,34 @@ export default function AboutPage() {
                     </Card>
                 </div>
             </div>
+        </section>
+
+         {/* Mission & Vision Section */}
+        <section className="mt-24">
+          <div className="grid md:grid-cols-2 gap-8">
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="inline-block bg-primary/10 p-4 rounded-full">
+                  <Target className="h-12 w-12 text-primary" />
+                </div>
+                <h3 className="mt-4 text-2xl font-bold font-headline">Mission</h3>
+                <p className="mt-2 text-lg text-foreground/80">
+                  To prepare learners who are innovation receptive, highly adaptable and problem solving minded people with pre-disposition to life-long learning, leadership and careers in an ever-changing world.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-8 text-center">
+                 <div className="inline-block bg-accent/10 p-4 rounded-full">
+                  <Eye className="h-12 w-12 text-accent" />
+                </div>
+                <h3 className="mt-4 text-2xl font-bold font-headline">Our Vision</h3>
+                <p className="mt-2 text-lg text-foreground/80">
+                  To be a pioneer tertiary institution of global distinction.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </section>
       </div>
     </div>
