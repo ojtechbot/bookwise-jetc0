@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings } from "lucide-react";
+import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -105,6 +105,8 @@ export function Header() {
               <nav className="grid gap-6 text-lg font-medium p-4">
                 <NavLink href="/">Home</NavLink>
                 <NavLink href="/search">Search</NavLink>
+                <NavLink href="/about">About</NavLink>
+                <NavLink href="/contact">Contact</NavLink>
                 {isLoggedIn && isStudent && <NavLink href="/dashboard">Dashboard</NavLink>}
                 {isLoggedIn && !isStudent && <NavLink href="/admin">Admin</NavLink>}
               </nav>
@@ -118,6 +120,8 @@ export function Header() {
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/" className="text-foreground/70 hover:text-primary transition-colors">Home</Link>
           <Link href="/search" className="text-foreground/70 hover:text-primary transition-colors">Search</Link>
+          <Link href="/about" className="text-foreground/70 hover:text-primary transition-colors">About</Link>
+          <Link href="/contact" className="text-foreground/70 hover:text-primary transition-colors">Contact</Link>
           {isLoggedIn && isStudent && <Link href="/dashboard" className="text-foreground/70 hover:text-primary transition-colors">Dashboard</Link>}
            {isLoggedIn && !isStudent && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
         </nav>
