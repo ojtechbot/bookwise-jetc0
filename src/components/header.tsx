@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { useTheme } from "next-themes";
 import { Separator } from "./ui/separator";
+import { useState } from "react";
+import { Skeleton } from "./ui/skeleton";
 
 function ThemeSwitcher() {
     const { setTheme, theme } = useTheme();
@@ -35,6 +37,7 @@ export function Header() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, userProfile, isStudent, isLoading } = useAuth();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   const handleLogout = async () => {
     try {
@@ -56,11 +59,17 @@ export function Header() {
   
   const isLoggedIn = !!user;
 
+  const NavLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
+    <Link href={href} className="hover:text-primary transition-colors" onClick={() => setIsSheetOpen(false)}>
+      {children}
+    </Link>
+  );
+
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 md:px-6 flex items-center h-16">
         <div className="md:hidden">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu />
@@ -70,7 +79,7 @@ export function Header() {
             <SheetContent side="left">
                <SheetHeader>
                 <SheetTitle>
-                  <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
+                  <Link href="/" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setIsSheetOpen(false)}>
                     <BookMarked className="h-6 w-6" />
                     <span>Libroweb</span>
                   </Link>
@@ -94,10 +103,10 @@ export function Header() {
                 )}
               </div>
               <nav className="grid gap-6 text-lg font-medium p-4">
-                <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-                <Link href="/search" className="hover:text-primary transition-colors">Search</Link>
-                {isLoggedIn && isStudent && <Link href="/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>}
-                {isLoggedIn && !isStudent && <Link href="/admin" className="hover:text-primary transition-colors">Admin</Link>}
+                <NavLink href="/">Home</NavLink>
+                <NavLink href="/search">Search</NavLink>
+                {isLoggedIn && isStudent && <NavLink href="/dashboard">Dashboard</NavLink>}
+                {isLoggedIn && !isStudent && <NavLink href="/admin">Admin</NavLink>}
               </nav>
             </SheetContent>
           </Sheet>
@@ -114,7 +123,11 @@ export function Header() {
         </nav>
         <div className="flex items-center gap-4 ml-auto">
           <ThemeSwitcher />
-          {isLoading ? null : isLoggedIn ? (
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-10 rounded-full" />
+            </div>
+           ) : isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
