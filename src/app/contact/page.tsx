@@ -15,14 +15,13 @@ export default function ContactPage() {
           <p className="mt-4 max-w-3xl mx-auto text-lg md:text-xl text-foreground/80">
             We are here to help. Reach out to us through any of the channels below.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 bg-primary/10 py-8 rounded-lg">
             <Image
-              src="https://placehold.co/1200x400.png"
-              alt="Foundation Polytechnic Contact"
-              width={1200}
-              height={400}
-              className="rounded-lg shadow-lg mx-auto"
-              data-ai-hint="contact us"
+              src="/images/logo.png"
+              alt="Foundation Polytechnic Logo"
+              width={800}
+              height={200}
+              className="rounded-lg mx-auto w-4/5 md:w-1/2"
             />
           </div>
         </section>

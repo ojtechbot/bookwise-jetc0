@@ -50,13 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentUser) {
         setIsStudent(!!currentUser.email?.endsWith('@student.foundationpoly.com'));
         // Fetch profile but don't wait for it to finish before hiding preloader
-        fetchUserProfile(currentUser);
+        fetchUserProfile(currentUser).finally(() => setIsLoading(false));
       } else {
         setIsStudent(false);
         setUserProfile(null);
+        // Hide preloader as soon as auth state is known for guests
+        setIsLoading(false);
       }
-      // Hide preloader as soon as auth state is known
-      setIsLoading(false);
     });
 
     return () => unsubscribe();

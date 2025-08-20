@@ -15,14 +15,13 @@ export default function AboutPage() {
           <p className="mt-4 max-w-3xl mx-auto text-lg md:text-xl text-foreground/80">
             A world-class polytechnic dedicated to developing the next generation of Hi-Tech industry leaders.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 bg-primary/10 py-8 rounded-lg">
             <Image
-              src="https://placehold.co/1200x500.png"
-              alt="Foundation Polytechnic Campus"
-              width={1200}
-              height={500}
-              className="rounded-lg shadow-lg mx-auto"
-              data-ai-hint="modern university campus"
+              src="/images/logo.png"
+              alt="Foundation Polytechnic Logo"
+              width={800}
+              height={200}
+              className="rounded-lg mx-auto w-4/5 md:w-1/2"
             />
           </div>
         </section>
