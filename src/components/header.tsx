@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail } from "lucide-react";
+import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -16,6 +16,7 @@ import { useTheme } from "next-themes";
 import { Separator } from "./ui/separator";
 import { useState } from "react";
 import { Skeleton } from "./ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 
 function ThemeSwitcher() {
     const { setTheme, theme } = useTheme();
@@ -60,7 +61,7 @@ export function Header() {
   const isLoggedIn = !!user;
 
   const NavLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
-    <Link href={href} className="hover:text-primary transition-colors" onClick={() => setIsSheetOpen(false)}>
+    <Link href={href} className="hover:text-primary transition-colors text-base" onClick={() => setIsSheetOpen(false)}>
       {children}
     </Link>
   );
@@ -76,7 +77,7 @@ export function Header() {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left">
+            <SheetContent side="left" className="flex flex-col">
                <SheetHeader>
                 <SheetTitle>
                   <Link href="/" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setIsSheetOpen(false)}>
@@ -86,7 +87,7 @@ export function Header() {
                 </SheetTitle>
               </SheetHeader>
               <div className="py-4">
-                {isLoggedIn && userProfile && (
+                {isLoggedIn && userProfile ? (
                     <div className="px-4 space-y-2 mb-4">
                         <Avatar className="h-16 w-16">
                              <AvatarImage src={userProfile?.photoUrl ?? user.photoURL ?? undefined} alt={user.displayName ?? "User Avatar"} />
@@ -98,11 +99,30 @@ export function Header() {
                             <p className="font-semibold">{userProfile.name}</p>
                             <p className="text-sm text-muted-foreground">{isStudent ? userProfile.regNumber : userProfile.email}</p>
                         </div>
-                        <Separator />
+                    </div>
+                ) : (
+                    <div className="px-4">
+                         <Collapsible>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="w-full justify-between text-base font-medium">
+                                    Get Started
+                                    <ChevronDown />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-4 space-y-2 mt-2">
+                               <Button asChild className="w-full justify-start" variant="ghost">
+                                 <Link href="/login" onClick={() => setIsSheetOpen(false)}><LogIn className="mr-2 h-4 w-4" /> Login</Link>
+                               </Button>
+                               <Button asChild className="w-full justify-start" variant="ghost">
+                                <Link href="/register" onClick={() => setIsSheetOpen(false)}><UserPlus className="mr-2 h-4 w-4" /> Register</Link>
+                               </Button>
+                            </CollapsibleContent>
+                        </Collapsible>
                     </div>
                 )}
               </div>
-              <nav className="grid gap-6 text-lg font-medium p-4">
+              <Separator />
+              <nav className="grid gap-4 text-lg font-medium p-4">
                 <NavLink href="/">Home</NavLink>
                 <NavLink href="/search">Search</NavLink>
                 <NavLink href="/about">About</NavLink>
@@ -110,6 +130,9 @@ export function Header() {
                 {isLoggedIn && isStudent && <NavLink href="/dashboard">Dashboard</NavLink>}
                 {isLoggedIn && !isStudent && <NavLink href="/admin">Admin</NavLink>}
               </nav>
+               <div className="mt-auto p-4">
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>Log Out</Button>
+               </div>
             </SheetContent>
           </Sheet>
         </div>
@@ -193,4 +216,3 @@ export function Header() {
     </header>
   );
 }
-

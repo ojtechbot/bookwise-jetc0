@@ -274,7 +274,7 @@ export default function Home() {
             <AccordionItem value="item-1">
               <AccordionTrigger>How do I register for an account?</AccordionTrigger>
               <AccordionContent>
-                Students can register by clicking the "Register" button on the top right of the homepage. You will need your full name and student registration number. Staff and admins are pre-registered and can log in with their provided credentials.
+                Students can register by clicking the "Get Started" button on the top right of the homepage and then "Register". You will need your full name and student registration number. Staff and admins are pre-registered and can log in with their provided credentials.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-2">
@@ -284,9 +284,9 @@ export default function Home() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-3">
-              <AccordionTrigger>What is the borrowing period?</AccordionTrigger>
+              <AccordionTrigger>How do I write a review?</AccordionTrigger>
               <AccordionContent>
-                The standard borrowing period for all ebooks is 14 days. After this period, the book will be automatically returned from your dashboard, but you can borrow it again if it's available.
+                You can write a review for any book you have borrowed. On the book's detail page, you will find a "Write a review" section where you can give a star rating and leave a comment.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-4">
