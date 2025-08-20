@@ -2,7 +2,8 @@
 'use client';
 
 import Link from "next/link";
-import { BookMarked, LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import { LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -81,8 +82,7 @@ export function Header() {
                <SheetHeader>
                 <SheetTitle>
                   <Link href="/" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setIsSheetOpen(false)}>
-                    <BookMarked className="h-6 w-6" />
-                    <span>Foundation Poly</span>
+                    <Image src="/images/logo.png" alt="Foundation Polytechnic Logo" width={160} height={40} className="h-8 w-auto" />
                   </Link>
                 </SheetTitle>
               </SheetHeader>
@@ -137,8 +137,7 @@ export function Header() {
           </Sheet>
         </div>
         <Link href="/" className="flex items-center gap-2 mx-6 md:mr-6 md:ml-0">
-          <BookMarked className="w-8 h-8 text-primary" />
-          <span className="text-xl font-bold text-primary font-headline">Foundation Poly</span>
+          <Image src="/images/logo.png" alt="Foundation Polytechnic Logo" width={180} height={45} className="h-10 w-auto" />
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/" className="text-foreground/70 hover:text-primary transition-colors">Home</Link>
