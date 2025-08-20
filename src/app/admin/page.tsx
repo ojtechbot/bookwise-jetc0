@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Loader2, PlusCircle, Book, Users, BarChart, FileQuestion, Archive } from 'lucide-react';
+import { PlusCircle, Book, Users, BarChart, FileQuestion, Archive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useTransition } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { type BookRequest, archiveBookRequest, getBookRequests, getBooks, Book as BookType } from '@/services/book-service';
 import { AddBookDialog } from '@/app/add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
@@ -47,13 +47,10 @@ export default function AdminDashboardPage() {
   const [books, setBooks] = useState<BookType[]>(() => allInitialBooksData as unknown as BookType[]);
   const [users, setUsers] = useState<UserProfile[]>(() => allInitialUsersData as unknown as UserProfile[]);
   const [requests, setRequests] = useState<BookRequest[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isArchivePending, startArchiveTransition] = useTransition();
 
   const { toast } = useToast();
 
   const fetchData = async () => {
-    setIsDataLoading(true);
     try {
         const [booksData, usersData, requestsData] = await Promise.all([
             getBooks(),
@@ -66,8 +63,6 @@ export default function AdminDashboardPage() {
     } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
-    } finally {
-        setIsDataLoading(false);
     }
   }
 
@@ -91,19 +86,17 @@ export default function AdminDashboardPage() {
   }, [books]);
 
   const handleArchiveRequest = async (id: string) => {
-    startArchiveTransition(async () => {
-        const originalRequests = requests;
-        setRequests(prev => prev.filter(r => r.id !== id));
-        toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
+    const originalRequests = requests;
+    setRequests(prev => prev.filter(r => r.id !== id));
+    toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
 
-        try {
-            await archiveBookRequest(id!);
-        } catch (error) {
-            setRequests(originalRequests);
-            console.error("Failed to archive request", error);
-            toast({ title: "Error", description: "Could not archive the request. Please try again.", variant: "destructive" });
-        }
-    });
+    try {
+        await archiveBookRequest(id!);
+    } catch (error) {
+        setRequests(originalRequests);
+        console.error("Failed to archive request", error);
+        toast({ title: "Error", description: "Could not archive the request. Please try again.", variant: "destructive" });
+    }
   }
   
   const handleDataRefresh = () => {
@@ -113,7 +106,7 @@ export default function AdminDashboardPage() {
   if (isLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        {/* Skeleton loaders could be placed here */}
       </div>
     );
   }
@@ -138,7 +131,7 @@ export default function AdminDashboardPage() {
                   <Book className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  {isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{books.length}</div>}
+                  <div className="text-2xl font-bold">{books.length}</div>
                   <p className="text-xs text-muted-foreground">in the entire catalog</p>
               </CardContent>
           </Card>
@@ -148,7 +141,7 @@ export default function AdminDashboardPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  {isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{users.length}</div>}
+                  <div className="text-2xl font-bold">{users.length}</div>
                    <p className="text-xs text-muted-foreground">{`${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role !== 'student').length} staff`}</p>
               </CardContent>
           </Card>
@@ -158,7 +151,7 @@ export default function AdminDashboardPage() {
                     <FileQuestion className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{requests.length}</div> }
+                    <div className="text-2xl font-bold">{requests.length}</div> 
                     <p className="text-xs text-muted-foreground">new book requests from students</p>
                 </CardContent>
            </Card>
@@ -181,7 +174,6 @@ export default function AdminDashboardPage() {
             <CardDescription>Breakdown of books by genre.</CardDescription>
           </CardHeader>
           <CardContent>
-               {isDataLoading ? (<div className="flex items-center justify-center min-h-[300px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <ChartContainer config={{}} className="min-h-[300px] w-full">
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
@@ -195,7 +187,6 @@ export default function AdminDashboardPage() {
                         </PieChart>
                     </ResponsiveContainer>
                 </ChartContainer>
-                )}
           </CardContent>
         </Card>
         <Card>
@@ -240,7 +231,6 @@ export default function AdminDashboardPage() {
               <CardDescription>Upload, categorize, or delete ebooks from the library.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {isDataLoading ? (<div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -272,7 +262,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
-                 )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -283,7 +272,6 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage all registered users.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isDataLoading ? (<div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -316,7 +304,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
-                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -327,7 +314,6 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage book requests submitted by students.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isDataLoading ? (<div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -347,8 +333,8 @@ export default function AdminDashboardPage() {
                         <TableCell className="max-w-xs truncate">{request.reason}</TableCell>
                         <TableCell>{formatDistanceToNow(request.createdAt.toDate(), { addSuffix: true })}</TableCell>
                         <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)} disabled={isArchivePending}>
-                                {isArchivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)}>
+                                <Archive className="h-4 w-4" />
                                 <span className="sr-only">Archive</span>
                             </Button>
                         </TableCell>
@@ -361,7 +347,6 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
-                )}
             </CardContent>
           </Card>
         </TabsContent>
