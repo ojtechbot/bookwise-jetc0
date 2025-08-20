@@ -12,7 +12,7 @@ import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legen
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { type BookRequest, archiveBookRequest, getBookRequests, getBooks, Book as BookType } from '@/services/book-service';
-import { AddBookDialog } from '@/app/add-book-dialog';
+import { AddBookDialog } from '../add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
 import { DeleteBookDialog } from '@/components/delete-book-dialog';
 import { useAuth } from '@/context/auth-context';

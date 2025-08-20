@@ -15,7 +15,7 @@ import Image from "next/image";
 import initialBooksData from '@/data/books.json';
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
 
@@ -33,7 +33,7 @@ const latestBooks = [...initialBooksData]
     .slice(0, 8) as unknown as BookType[];
 
 export default function Home() {
-  const [allBooks, setAllBooks] = useState<BookType[]>([]);
+  const [allBooks, setAllBooks] = useState<BookType[]>(() => initialBooksData as unknown as BookType[]);
   const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
@@ -43,6 +43,7 @@ export default function Home() {
   );
 
   useEffect(() => {
+    // This is now just for potential re-fetching, initial data is from import
     const fetchAllBooks = async () => {
       try {
         const all = await getBooks();
@@ -51,8 +52,10 @@ export default function Home() {
         console.error("Failed to fetch books:", error);
       }
     };
-    fetchAllBooks();
-  }, []);
+    if (allBooks.length === 0) { // Only fetch if initial data somehow failed
+        fetchAllBooks();
+    }
+  }, [allBooks]);
 
   const fetchRecommendations = useCallback(async () => {
     if (!userProfile || !userProfile.borrowedBooks || userProfile.borrowedBooks.length === 0 || allBooks.length === 0) {
@@ -148,6 +151,7 @@ export default function Home() {
                         height={900}
                         className="w-full h-auto object-cover"
                         data-ai-hint={featuredBook.hint}
+                        priority
                     />
                     <div className="p-8">
                         <Badge variant="secondary">{featuredBook.category}</Badge>
@@ -219,6 +223,10 @@ export default function Home() {
             <Carousel
                 plugins={[autoplayPlugin.current]}
                 className="w-full"
+                opts={{
+                    align: "start",
+                    loop: true,
+                }}
                 onMouseEnter={autoplayPlugin.current.stop}
                 onMouseLeave={autoplayPlugin.current.reset}
                 >
@@ -231,6 +239,8 @@ export default function Home() {
                         </CarouselItem>
                     ))}
                 </CarouselContent>
+                 <CarouselPrevious className="hidden sm:flex" />
+                 <CarouselNext className="hidden sm:flex" />
             </Carousel>
           ) : (
              <div className="flex justify-center">

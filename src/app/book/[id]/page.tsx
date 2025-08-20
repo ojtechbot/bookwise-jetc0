@@ -124,6 +124,7 @@ export default function BookDetailsPage() {
               height={600}
               className="w-full h-auto object-cover"
               data-ai-hint="classic novel"
+              priority
             />
           </Card>
         </div>
