@@ -34,7 +34,7 @@ const staffFormSchema = z.object({
 
 type StaffFormValues = z.infer<typeof staffFormSchema>;
 
-const STUDENT_EMAIL_DOMAIN = 'student.libroweb.io';
+const STUDENT_EMAIL_DOMAIN = 'student.foundationpoly.com';
 
 export default function LoginPage() {
   const { toast } = useToast();

@@ -271,7 +271,7 @@ export default function DashboardPage() {
                          ) : (
                             <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-muted rounded-lg min-h-[250px]">
                                 <p className="font-semibold">No Reading History Yet</p>
-                                <p className="text-sm text-muted-foreground">Your genre breakdown will appear here once you've returned a book.</p>
+                                <p className="text-muted-foreground">Your genre breakdown will appear here once you've returned a book.</p>
                             </div>
                          )}
                     </div>

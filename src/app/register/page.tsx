@@ -29,7 +29,7 @@ const registerFormSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
-const STUDENT_EMAIL_DOMAIN = 'student.libroweb.io';
+const STUDENT_EMAIL_DOMAIN = 'student.foundationpoly.com';
 
 export default function RegisterPage() {
   const { toast } = useToast();
@@ -91,7 +91,7 @@ export default function RegisterPage() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Create a Student Account</CardTitle>
-            <CardDescription>Join Libroweb to access thousands of digital resources.</CardDescription>
+            <CardDescription>Join Foundation Polytechnic to access thousands of digital resources.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>

@@ -1,8 +1,7 @@
-# Firebase Studio
 
-This is a NextJS starter in Firebase Studio.
+# Foundation Polytechnic - Digital Library
 
-To get started, take a look at src/app/page.tsx.
+This is the digital library application for Foundation Polytechnic, Ikot Ekpene, built with Next.js in Firebase Studio.
 
 ## First-time Setup
 
@@ -17,9 +16,9 @@ npm run db:seed
 This will securely create the initial admin and librarian accounts and populate the library with books.
 
 **Default Credentials:**
-- **Admin Email:** `admin@libroweb.io`
+- **Admin Email:** `admin@foundationpoly.com`
 - **Admin Password:** `admin123`
-- **Librarian Email:** `librarian@libroweb.io`
+- **Librarian Email:** `librarian@foundationpoly.com`
 - **Librarian Password:** `librarian123`
 
 ## Features
@@ -38,4 +37,3 @@ This application offers a comprehensive set of features for managing a library a
 - **AI Avatar Generation:** Users can generate unique avatars using AI.
 - **Responsive Design:** The application is optimized for viewing on various devices and screen sizes.
 - **Theme Switching:** Easily toggle between light and dark modes for a personalized viewing experience.
-

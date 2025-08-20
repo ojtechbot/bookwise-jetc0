@@ -107,7 +107,7 @@ export default function Home() {
     <div className="flex flex-col items-center">
       <section className="w-full bg-primary/10 py-20 md:py-32">
         <div className="container mx-auto px-4 md:px-6 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-primary">Welcome to Libroweb</h1>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-primary">Welcome to Foundation Polytechnic</h1>
           <p className="mt-4 max-w-3xl mx-auto text-lg md:text-xl text-foreground/80">
             Your digital gateway to a universe of knowledge. Discover, borrow, and read from our vast collection of ebooks.
           </p>

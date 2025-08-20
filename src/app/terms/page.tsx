@@ -13,7 +13,7 @@ export default function TermsAndConditionsPage() {
           <section>
             <h2 className="text-2xl font-bold font-headline mb-2">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using the Libroweb application ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by these terms, please do not use the Service.
+              By accessing and using the Foundation Polytechnic digital library ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by these terms, please do not use the Service.
             </p>
           </section>
 
@@ -46,7 +46,7 @@ export default function TermsAndConditionsPage() {
           <section>
             <h2 className="text-2xl font-bold font-headline mb-2">5. Intellectual Property</h2>
             <p>
-              The Service and its original content (excluding content provided by users), features, and functionality are and will remain the exclusive property of Libroweb and its licensors. The ebooks and their content are the property of their respective copyright holders.
+              The Service and its original content (excluding content provided by users), features, and functionality are and will remain the exclusive property of Foundation Polytechnic and its licensors. The ebooks and their content are the property of their respective copyright holders.
             </p>
           </section>
 
@@ -60,7 +60,7 @@ export default function TermsAndConditionsPage() {
           <section>
             <h2 className="text-2xl font-bold font-headline mb-2">7. Limitation of Liability</h2>
             <p>
-              In no event shall Libroweb, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
+              In no event shall Foundation Polytechnic, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
             </p>
           </section>
           

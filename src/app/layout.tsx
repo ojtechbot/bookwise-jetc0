@@ -12,7 +12,7 @@ import { AiChatSuggestion } from '@/components/ai-chat-suggestion';
 
 
 export const metadata: Metadata = {
-  title: 'Libroweb',
+  title: 'Foundation Polytechnic',
   description: 'A modern digital library experience.',
   icons: {
     icon: '/favicon.ico',

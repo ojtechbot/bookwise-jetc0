@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-2xl font-bold font-headline mb-2">Introduction</h2>
             <p>
-              Welcome to Libroweb. We are committed to protecting your privacy and handling your data in an open and transparent manner. This privacy policy sets out how we collect, use, and protect any information that you give us when you use this application.
+              Welcome to the Foundation Polytechnic digital library. We are committed to protecting your privacy and handling your data in an open and transparent manner. This privacy policy sets out how we collect, use, and protect any information that you give us when you use this application.
             </p>
           </section>
 

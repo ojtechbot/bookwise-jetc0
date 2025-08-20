@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        setIsStudent(!!currentUser.email?.endsWith('@student.libroweb.io'));
+        setIsStudent(!!currentUser.email?.endsWith('@student.foundationpoly.com'));
         // Fetch profile but don't wait for it to finish before hiding preloader
         fetchUserProfile(currentUser);
       } else {
@@ -82,5 +82,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    

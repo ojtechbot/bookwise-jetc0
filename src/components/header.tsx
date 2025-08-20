@@ -81,7 +81,7 @@ export function Header() {
                 <SheetTitle>
                   <Link href="/" className="flex items-center gap-2 text-lg font-semibold" onClick={() => setIsSheetOpen(false)}>
                     <BookMarked className="h-6 w-6" />
-                    <span>Libroweb</span>
+                    <span>Foundation Poly</span>
                   </Link>
                 </SheetTitle>
               </SheetHeader>
@@ -115,7 +115,7 @@ export function Header() {
         </div>
         <Link href="/" className="flex items-center gap-2 mx-6 md:mr-6 md:ml-0">
           <BookMarked className="w-8 h-8 text-primary" />
-          <span className="text-xl font-bold text-primary font-headline">Libroweb</span>
+          <span className="text-xl font-bold text-primary font-headline">Foundation Poly</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/" className="text-foreground/70 hover:text-primary transition-colors">Home</Link>
