@@ -18,8 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTransition, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { addBook } from '@/services/book-service';
 
@@ -43,7 +42,7 @@ type AddBookDialogProps = {
 };
 
 export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -62,26 +61,32 @@ export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
     },
   });
 
-  const onSubmit = (values: AddBookFormValues) => {
-    startTransition(async () => {
-      try {
-        await addBook(values);
-        toast({
-          title: 'Book Added!',
-          description: `"${values.title}" has been added to the library.`,
-        });
-        form.reset();
-        onBookAdded?.();
-        setIsOpen(false);
-      } catch (error) {
-        console.error('Failed to add book:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not add the book. Please try again.',
-          variant: 'destructive',
-        });
-      }
+  const onSubmit = async (values: AddBookFormValues) => {
+    setIsSubmitting(true);
+    
+    // Optimistically close the dialog and show success
+    toast({
+      title: 'Book Added!',
+      description: `"${values.title}" has been added to the library.`,
     });
+    onBookAdded?.();
+    setIsOpen(false);
+    form.reset();
+
+    try {
+      // Perform the async operation in the background
+      await addBook(values);
+    } catch (error) {
+      console.error('Failed to add book:', error);
+      // If it fails, show an error toast
+      toast({
+        title: 'Error',
+        description: 'Could not add the book. Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -224,8 +229,7 @@ export function AddBookDialog({ children, onBookAdded }: AddBookDialogProps) {
                         Cancel
                     </Button>
                 </DialogClose>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isSubmitting}>
                 Add Book
               </Button>
             </DialogFooter>
