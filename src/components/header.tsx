@@ -100,7 +100,7 @@ export function Header() {
                             <p className="text-sm text-muted-foreground">{isStudent ? userProfile.regNumber : userProfile.email}</p>
                         </div>
                     </div>
-                ) : (
+                ) : !isLoggedIn && (
                     <div className="px-4">
                          <Collapsible>
                             <CollapsibleTrigger asChild>
