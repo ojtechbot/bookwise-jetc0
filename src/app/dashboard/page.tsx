@@ -17,7 +17,7 @@ import { useState, useTransition, useEffect, useMemo } from 'react';
 import { requestBook } from '@/ai/flows/request-book-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useAuth } from '@/context/auth-context';
 import { useLibraryStore } from '@/store/library-store';

@@ -89,23 +89,40 @@ export const getBooks = async (sortBy: string = 'createdAt', order: 'desc' | 'as
 
 // READ ONE
 export const getBook = async (id: string): Promise<Book | null> => {
-    const docRef = doc(db, 'books', id);
-    const docSnap = await getDoc(docRef);
+    try {
+        const docRef = doc(db, 'books', id);
+        const docSnap = await getDoc(docRef);
 
-    if (docSnap.exists()) {
-        return docSnap.data() as Book;
-    } 
+        if (docSnap.exists()) {
+            return docSnap.data() as Book;
+        }
 
-    // Fallback query if the id is a custom field and not the document ID
-    console.warn(`Could not find book with document ID ${id}, trying query...`);
-    const q = query(collection(db, "books"), where("id", "==", id), limit(1));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        return querySnapshot.docs[0].data() as Book;
+        // Fallback query if the id is a custom field and not the document ID
+        const q = query(collection(db, "books"), where("id", "==", id), limit(1));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs[0].data() as Book;
+        }
+
+        // Final fallback to JSON data if not in Firestore at all
+        console.warn(`Book with ID ${id} not found in Firestore, falling back to local JSON data.`);
+        const bookFromJson = (initialBooksData as unknown as Book[]).find(b => b.id === id);
+        if (bookFromJson) {
+             // Convert plain seconds/nanoseconds to Firestore Timestamp
+            const bookWithTimestamp = {
+                ...bookFromJson,
+                createdAt: new Timestamp(bookFromJson.createdAt.seconds, bookFromJson.createdAt.nanoseconds)
+            };
+            return bookWithTimestamp;
+        }
+
+    } catch (error) {
+        console.error("Error fetching book:", error);
     }
-    
+
     return null;
 };
+
 
 // UPDATE
 export const updateBook = async (id: string, data: Partial<Omit<Book, 'id' | 'availableCopies'>>) => {

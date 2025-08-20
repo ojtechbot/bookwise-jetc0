@@ -35,12 +35,14 @@ export default function BookDetailsPage() {
     if (!params.id) return;
     setIsLoadingBook(true);
     try {
-      const [bookData, reviewsData] = await Promise.all([
-        getBook(params.id),
-        getReviews(params.id)
-      ]);
+      const bookData = await getBook(params.id);
       setBook(bookData);
-      setReviews(reviewsData as Review[]);
+
+      if (bookData) {
+        const reviewsData = await getReviews(params.id);
+        setReviews(reviewsData as Review[]);
+      }
+      
     } catch (error) {
       console.error("Failed to fetch book or reviews:", error);
       toast({ title: "Error", description: "Could not load book details.", variant: "destructive" });
