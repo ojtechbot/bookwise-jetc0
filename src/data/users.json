@@ -1,0 +1,21 @@
+
+[
+    {
+      "uid": "default-admin-01",
+      "name": "Admin",
+      "email": "admin@libroweb.io",
+      "role": "admin",
+      "regNumber": null,
+      "createdAt": { "seconds": 1715040000, "nanoseconds": 0 },
+      "photoUrl": ""
+    },
+    {
+        "uid": "default-librarian-01",
+        "name": "Librarian",
+        "email": "librarian@libroweb.io",
+        "role": "librarian",
+        "regNumber": null,
+        "createdAt": { "seconds": 1715040100, "nanoseconds": 0 },
+        "photoUrl": ""
+    }
+]

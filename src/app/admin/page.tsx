@@ -11,15 +11,18 @@ import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/u
 import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { getBooks, type Book as BookType, getBookRequests, type BookRequest, archiveBookRequest } from '@/services/book-service';
+import { type BookRequest, archiveBookRequest, getBookRequests } from '@/services/book-service';
 import { AddBookDialog } from '@/app/add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
 import { DeleteBookDialog } from '@/components/delete-book-dialog';
-import { getUsers, UserProfile } from '@/services/user-service';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { EditUserDialog } from '@/components/edit-user-dialog';
+import allBooksData from '@/data/books.json';
+import allUsersData from '@/data/users.json';
+import { type Book as BookType, type Book as UserProfile } from '@/services/book-service';
+
 
 const chartData = [
     { month: 'January', borrows: 186, signups: 80 },
@@ -40,32 +43,31 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, isStudent, isLoading } = useAuth();
-  const [books, setBooks] = useState<BookType[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  
+  // Use static JSON data
+  const books: BookType[] = useMemo(() => allBooksData as unknown as BookType[], []);
+  const users: UserProfile[] = useMemo(() => allUsersData as unknown as UserProfile[], []);
+  
   const [requests, setRequests] = useState<BookRequest[]>([]);
   const { toast } = useToast();
 
-  const fetchData = async () => {
+  // Fetch only dynamic data like requests
+  const fetchRequests = async () => {
     try {
-      const [booksData, usersData, requestsData] = await Promise.all([
-        getBooks(), 
-        getUsers(),
-        getBookRequests()
-      ]);
-      setBooks(booksData);
-      setUsers(usersData);
-      setRequests(requestsData);
+        const requestsData = await getBookRequests();
+        setRequests(requestsData);
     } catch (error) {
-      console.error("Failed to fetch data:", error);
+        console.error("Failed to fetch requests:", error);
     }
   }
-  
+
   useEffect(() => {
     if (!isLoading) {
       if (!user || isStudent) {
         router.push(isStudent ? '/dashboard' : '/login');
       } else {
-        fetchData();
+        // Only fetch requests now
+        fetchRequests();
       }
     }
   }, [user, isStudent, isLoading, router]);
@@ -109,7 +111,7 @@ export default function AdminDashboardPage() {
           <h1 className="text-4xl font-bold text-primary">Admin Dashboard</h1>
           <p className="text-lg text-muted-foreground">Manage your digital library resources.</p>
         </div>
-        <AddBookDialog onBookAdded={fetchData}>
+        <AddBookDialog onBookAdded={() => { /* No-op as we use static data for now */ }}>
             <Button className="mt-4 md:mt-0">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Book
             </Button>
@@ -241,10 +243,10 @@ export default function AdminDashboardPage() {
                         <TableCell><Badge variant="secondary">{book.category}</Badge></TableCell>
                         <TableCell>{book.availableCopies}/{book.totalCopies}</TableCell>
                         <TableCell className="text-right">
-                           <EditBookDialog book={book} onBookEdited={fetchData}>
+                           <EditBookDialog book={book} onBookEdited={() => {}}>
                             <Button variant="outline" size="sm" className="mr-2">Edit</Button>
                           </EditBookDialog>
-                          <DeleteBookDialog bookId={book.id} bookTitle={book.title} onBookDeleted={fetchData}>
+                          <DeleteBookDialog bookId={book.id} bookTitle={book.title} onBookDeleted={() => {}}>
                             <Button variant="destructive" size="sm">Delete</Button>
                           </DeleteBookDialog>
                         </TableCell>
@@ -275,7 +277,7 @@ export default function AdminDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((u) => (
+                    {users.map((u: any) => (
                       <TableRow key={u.uid}>
                         <TableCell className="font-medium">{u.name}</TableCell>
                         <TableCell>{u.role === 'student' ? u.regNumber : u.email}</TableCell>
@@ -286,7 +288,7 @@ export default function AdminDashboardPage() {
                             {u.createdAt ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <EditUserDialog user={u} onUserUpdated={fetchData}>
+                          <EditUserDialog user={u} onUserUpdated={() => {}}>
                             <Button variant="outline" size="sm" disabled={user?.uid === u.uid}>Edit</Button>
                           </EditUserDialog>
                         </TableCell>
@@ -345,5 +347,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    
