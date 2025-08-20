@@ -140,7 +140,7 @@ export default function LoginPage() {
                     <CardDescription>Enter your registration number and PIN to access your dashboard.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                <Form {...form}>
+                <Form {...studentForm}>
                     <form onSubmit={studentForm.handleSubmit(onStudentSubmit)} className="space-y-4">
                     <FormField
                         control={studentForm.control}
