@@ -10,8 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
 import { BarChart as RechartsBarChart, PieChart, Pie, Cell, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from 'recharts';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
-import { type BookRequest, archiveBookRequest, getBookRequests } from '@/services/book-service';
+import { useEffect, useState, useMemo, useTransition } from 'react';
+import { type BookRequest, archiveBookRequest, getBookRequests, getBooks, Book as BookType } from '@/services/book-service';
 import { AddBookDialog } from '@/app/add-book-dialog';
 import { EditBookDialog } from '@/components/edit-book-dialog';
 import { DeleteBookDialog } from '@/components/delete-book-dialog';
@@ -19,9 +19,9 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { EditUserDialog } from '@/components/edit-user-dialog';
-import allBooksData from '@/data/books.json';
-import allUsersData from '@/data/users.json';
-import { type Book as BookType, type Book as UserProfile } from '@/services/book-service';
+import allInitialBooksData from '@/data/books.json';
+import allInitialUsersData from '@/data/users.json';
+import { type UserProfile, getUsers } from '@/services/user-service';
 
 
 const chartData = [
@@ -44,20 +44,30 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, isStudent, isLoading } = useAuth();
   
-  // Use static JSON data
-  const books: BookType[] = useMemo(() => allBooksData as unknown as BookType[], []);
-  const users: UserProfile[] = useMemo(() => allUsersData as unknown as UserProfile[], []);
-  
+  const [books, setBooks] = useState<BookType[]>(() => allInitialBooksData as unknown as BookType[]);
+  const [users, setUsers] = useState<UserProfile[]>(() => allInitialUsersData as unknown as UserProfile[]);
   const [requests, setRequests] = useState<BookRequest[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isArchivePending, startArchiveTransition] = useTransition();
+
   const { toast } = useToast();
 
-  // Fetch only dynamic data like requests
-  const fetchRequests = async () => {
+  const fetchData = async () => {
+    setIsDataLoading(true);
     try {
-        const requestsData = await getBookRequests();
+        const [booksData, usersData, requestsData] = await Promise.all([
+            getBooks(),
+            getUsers(),
+            getBookRequests()
+        ]);
+        setBooks(booksData);
+        setUsers(usersData);
         setRequests(requestsData);
     } catch (error) {
-        console.error("Failed to fetch requests:", error);
+        console.error("Failed to fetch dashboard data:", error);
+        toast({ title: "Error", description: "Could not load dashboard data.", variant: "destructive" });
+    } finally {
+        setIsDataLoading(false);
     }
   }
 
@@ -66,13 +76,13 @@ export default function AdminDashboardPage() {
       if (!user || isStudent) {
         router.push(isStudent ? '/dashboard' : '/login');
       } else {
-        // Only fetch requests now
-        fetchRequests();
+        fetchData();
       }
     }
   }, [user, isStudent, isLoading, router]);
   
   const categoryData = useMemo(() => {
+    if (books.length === 0) return [];
     const counts: { [key: string]: number } = {};
     books.forEach(book => {
         counts[book.category] = (counts[book.category] || 0) + 1;
@@ -81,19 +91,23 @@ export default function AdminDashboardPage() {
   }, [books]);
 
   const handleArchiveRequest = async (id: string) => {
-    // Optimistically update the UI
-    const originalRequests = requests;
-    setRequests(prev => prev.filter(r => r.id !== id));
-    toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
+    startArchiveTransition(async () => {
+        const originalRequests = requests;
+        setRequests(prev => prev.filter(r => r.id !== id));
+        toast({ title: "Request Archived", description: "The book request has been moved to the archive." });
 
-    try {
-        await archiveBookRequest(id!);
-    } catch (error) {
-        // If the API call fails, revert the UI and show an error
-        setRequests(originalRequests);
-        console.error("Failed to archive request", error);
-        toast({ title: "Error", description: "Could not archive the request. Please try again.", variant: "destructive" });
-    }
+        try {
+            await archiveBookRequest(id!);
+        } catch (error) {
+            setRequests(originalRequests);
+            console.error("Failed to archive request", error);
+            toast({ title: "Error", description: "Could not archive the request. Please try again.", variant: "destructive" });
+        }
+    });
+  }
+  
+  const handleDataRefresh = () => {
+    fetchData();
   }
 
   if (isLoading || !user) {
@@ -111,7 +125,7 @@ export default function AdminDashboardPage() {
           <h1 className="text-4xl font-bold text-primary">Admin Dashboard</h1>
           <p className="text-lg text-muted-foreground">Manage your digital library resources.</p>
         </div>
-        <AddBookDialog onBookAdded={() => { /* No-op as we use static data for now */ }}>
+        <AddBookDialog onBookAdded={handleDataRefresh}>
             <Button className="mt-4 md:mt-0">
               <PlusCircle className="mr-2 h-4 w-4" /> Add New Book
             </Button>
@@ -124,7 +138,7 @@ export default function AdminDashboardPage() {
                   <Book className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{books.length}</div>
+                  {isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{books.length}</div>}
                   <p className="text-xs text-muted-foreground">in the entire catalog</p>
               </CardContent>
           </Card>
@@ -134,7 +148,7 @@ export default function AdminDashboardPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                  <div className="text-2xl font-bold">{users.length}</div>
+                  {isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{users.length}</div>}
                    <p className="text-xs text-muted-foreground">{`${users.filter(u => u.role === 'student').length} students, ${users.filter(u => u.role !== 'student').length} staff`}</p>
               </CardContent>
           </Card>
@@ -144,7 +158,7 @@ export default function AdminDashboardPage() {
                     <FileQuestion className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{requests.length}</div>
+                    {isDataLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{requests.length}</div> }
                     <p className="text-xs text-muted-foreground">new book requests from students</p>
                 </CardContent>
            </Card>
@@ -167,6 +181,7 @@ export default function AdminDashboardPage() {
             <CardDescription>Breakdown of books by genre.</CardDescription>
           </CardHeader>
           <CardContent>
+               {isDataLoading ? (<div className="flex items-center justify-center min-h-[300px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <ChartContainer config={{}} className="min-h-[300px] w-full">
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
@@ -180,6 +195,7 @@ export default function AdminDashboardPage() {
                         </PieChart>
                     </ResponsiveContainer>
                 </ChartContainer>
+                )}
           </CardContent>
         </Card>
         <Card>
@@ -224,6 +240,7 @@ export default function AdminDashboardPage() {
               <CardDescription>Upload, categorize, or delete ebooks from the library.</CardDescription>
             </CardHeader>
             <CardContent>
+                 {isDataLoading ? (<div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -243,10 +260,10 @@ export default function AdminDashboardPage() {
                         <TableCell><Badge variant="secondary">{book.category}</Badge></TableCell>
                         <TableCell>{book.availableCopies}/{book.totalCopies}</TableCell>
                         <TableCell className="text-right">
-                           <EditBookDialog book={book} onBookEdited={() => {}}>
+                           <EditBookDialog book={book} onBookEdited={handleDataRefresh}>
                             <Button variant="outline" size="sm" className="mr-2">Edit</Button>
                           </EditBookDialog>
-                          <DeleteBookDialog bookId={book.id} bookTitle={book.title} onBookDeleted={() => {}}>
+                          <DeleteBookDialog bookId={book.id} bookTitle={book.title} onBookDeleted={handleDataRefresh}>
                             <Button variant="destructive" size="sm">Delete</Button>
                           </DeleteBookDialog>
                         </TableCell>
@@ -255,6 +272,7 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
+                 )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -265,6 +283,7 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage all registered users.</CardDescription>
             </CardHeader>
             <CardContent>
+                {isDataLoading ? (<div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -288,7 +307,7 @@ export default function AdminDashboardPage() {
                             {u.createdAt ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <EditUserDialog user={u} onUserUpdated={() => {}}>
+                          <EditUserDialog user={u} onUserUpdated={handleDataRefresh}>
                             <Button variant="outline" size="sm" disabled={user?.uid === u.uid}>Edit</Button>
                           </EditUserDialog>
                         </TableCell>
@@ -297,6 +316,7 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
+                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -307,6 +327,7 @@ export default function AdminDashboardPage() {
               <CardDescription>View and manage book requests submitted by students.</CardDescription>
             </CardHeader>
             <CardContent>
+                {isDataLoading ? (<div className="flex items-center justify-center min-h-[200px]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -326,8 +347,8 @@ export default function AdminDashboardPage() {
                         <TableCell className="max-w-xs truncate">{request.reason}</TableCell>
                         <TableCell>{formatDistanceToNow(request.createdAt.toDate(), { addSuffix: true })}</TableCell>
                         <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)}>
-                                <Archive className="h-4 w-4" />
+                            <Button variant="outline" size="sm" onClick={() => handleArchiveRequest(request.id!)} disabled={isArchivePending}>
+                                {isArchivePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
                                 <span className="sr-only">Archive</span>
                             </Button>
                         </TableCell>
@@ -340,6 +361,7 @@ export default function AdminDashboardPage() {
                   </TableBody>
                 </Table>
                 </div>
+                )}
             </CardContent>
           </Card>
         </TabsContent>
