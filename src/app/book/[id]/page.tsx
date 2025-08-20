@@ -10,47 +10,49 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
-import { getReviews, type Book, submitReview } from '@/services/book-service';
+import { getBook, getReviews, type Book, submitReview } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList, type Review } from '@/components/review-list';
 import { useParams } from 'next/navigation';
-import allBooksData from '@/data/books.json';
 import { useLibraryStore } from '@/store/library-store';
 
 export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
   const { user, userProfile } = useAuth();
   const [isSummaryPending, startSummaryTransition] = useTransition();
+  const [book, setBook] = useState<Book | null>(null);
   const [aiSummary, setAiSummary] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoadingBook, setIsLoadingBook] = useState(true);
   const { toast } = useToast();
   
   const { borrowedBooks, borrowBook: borrowBookAction, returnBook: returnBookAction } = useLibraryStore();
   const isBorrowedByUser = useMemo(() => borrowedBooks.includes(params.id), [borrowedBooks, params.id]);
 
-  const book: Book | null = useMemo(() => {
-    if (!params.id) return null;
-    return (allBooksData as unknown as Book[]).find(b => b.id === params.id) || null;
-  }, [params.id]);
-
-
-  const fetchReviews = useCallback(async () => {
+  const fetchBookAndReviews = useCallback(async () => {
     if (!params.id) return;
+    setIsLoadingBook(true);
     try {
-      // Review fetching can remain as it might use a live database
-      const reviewsData = await getReviews(params.id);
+      const [bookData, reviewsData] = await Promise.all([
+        getBook(params.id),
+        getReviews(params.id)
+      ]);
+      setBook(bookData);
       setReviews(reviewsData as Review[]);
     } catch (error) {
-      console.error("Failed to fetch reviews:", error);
+      console.error("Failed to fetch book or reviews:", error);
+      toast({ title: "Error", description: "Could not load book details.", variant: "destructive" });
+    } finally {
+        setIsLoadingBook(false);
     }
-  }, [params.id]);
+  }, [params.id, toast]);
 
 
   useEffect(() => {
-    fetchReviews();
-  }, [fetchReviews]);
+    fetchBookAndReviews();
+  }, [fetchBookAndReviews]);
   
   const handleGenerateSummary = () => {
     if (!book) return;
@@ -60,6 +62,7 @@ export default function BookDetailsPage() {
         setAiSummary(result.summary);
       } catch (error) {
         console.error("Failed to generate summary:", error);
+        toast({ title: "AI Summary Failed", description: "We couldn't generate a summary at this time.", variant: "destructive" });
         setAiSummary("Sorry, we couldn't generate a summary at this time.");
       }
     });
@@ -88,14 +91,22 @@ export default function BookDetailsPage() {
         comment,
       });
       toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
-      // Refresh reviews
-      await fetchReviews();
+      // Refresh reviews and book data to show new average rating
+      await fetchBookAndReviews();
       return true;
     } catch (error: any) {
       console.error("Failed to submit review:", error);
       toast({ title: 'Error', description: "Could not submit your review. Please try again.", variant: 'destructive' });
       return false;
     }
+  }
+  
+  if (isLoadingBook) {
+     return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
   }
   
   if (!book) {
@@ -123,7 +134,7 @@ export default function BookDetailsPage() {
               width={400}
               height={600}
               className="w-full h-auto object-cover"
-              data-ai-hint="classic novel"
+              data-ai-hint={book.hint}
               priority
             />
           </Card>
@@ -135,7 +146,7 @@ export default function BookDetailsPage() {
             <div className="flex items-center gap-2 mt-4">
                 <div className="flex items-center gap-1 text-amber-500">
                     {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={i < (book.averageRating || 0) ? 'fill-current' : 'text-muted-foreground'} />
+                        <Star key={i} className={i < Math.round(book.averageRating || 0) ? 'fill-current' : 'text-muted-foreground/50'} />
                     ))}
                 </div>
                 <span className="text-muted-foreground text-sm">({book.reviewCount || 0} reviews)</span>
@@ -176,7 +187,7 @@ export default function BookDetailsPage() {
                     <span>Generating summary...</span>
                   </div>
                 ) : (
-                  aiSummary
+                  aiSummary || 'Click to generate a summary.'
                 )}
               </AccordionContent>
             </AccordionItem>
@@ -197,13 +208,23 @@ export default function BookDetailsPage() {
           <Separator className="my-8" />
            <div>
             <h2 className="text-2xl font-bold font-headline flex items-center gap-2"><MessageSquare /> Reviews</h2>
-            {user && !hasUserReviewed && (
+            {user && !isBorrowedByUser && (
+                <div className="mt-4 text-sm text-center text-muted-foreground bg-accent/20 p-3 rounded-md">
+                    You must borrow this book to leave a review.
+                </div>
+            )}
+            {user && isBorrowedByUser && !hasUserReviewed && (
               <Card className="my-6">
                 <CardContent className="p-6">
                     <h3 className="text-lg font-semibold mb-2">Write a review</h3>
                     <ReviewForm onSubmit={handleReviewSubmit} />
                 </CardContent>
               </Card>
+            )}
+             {user && hasUserReviewed && (
+                <div className="mt-4 text-sm text-center text-muted-foreground bg-accent/20 p-3 rounded-md">
+                    You've already reviewed this book. Thank you!
+                </div>
             )}
             <ReviewList reviews={reviews} />
           </div>

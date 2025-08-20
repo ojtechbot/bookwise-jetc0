@@ -51,7 +51,8 @@ export const addBook = async (bookData: Omit<Book, 'id' | 'createdAt' | 'availab
         reviewCount: 0,
         averageRating: 0,
     };
-    const docRef = await addDoc(booksCollection, newBookData);
+    const docRef = doc(booksCollection);
+    await setDoc(docRef, newBookData);
     // Now update the document with its own ID
     await updateDoc(docRef, { id: docRef.id });
     return docRef.id;
@@ -88,9 +89,6 @@ export const getBooks = async (sortBy: string = 'createdAt', order: 'desc' | 'as
 
 // READ ONE
 export const getBook = async (id: string): Promise<Book | null> => {
-    // Firestore's getDoc requires the actual document ID, not a field value
-    // If your `id` field is the same as the Firestore document ID, this is fine.
-    // If not, you need to query.
     const docRef = doc(db, 'books', id);
     const docSnap = await getDoc(docRef);
 
@@ -99,7 +97,8 @@ export const getBook = async (id: string): Promise<Book | null> => {
     } 
 
     // Fallback query if the id is a custom field and not the document ID
-    const q = query(collection(db, "books"), where("id", "==", id));
+    console.warn(`Could not find book with document ID ${id}, trying query...`);
+    const q = query(collection(db, "books"), where("id", "==", id), limit(1));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
         return querySnapshot.docs[0].data() as Book;
@@ -234,21 +233,31 @@ export const returnBook = async (bookId: string, userId: string) => {
 
 export const submitReview = async (bookId: string, review: ReviewData) => {
   const bookRef = doc(db, 'books', bookId);
-  const reviewRef = doc(collection(bookRef, 'reviews'));
+  const reviewsCollectionRef = collection(bookRef, 'reviews');
+  const userReviewQuery = query(reviewsCollectionRef, where('userId', '==', review.userId));
 
   await runTransaction(db, async (transaction) => {
     const bookDoc = await transaction.get(bookRef);
     if (!bookDoc.exists()) {
       throw new Error("Book not found.");
     }
+    
+    // Check if user has already reviewed
+    const userReviewSnapshot = await getDocs(userReviewQuery);
+    if (!userReviewSnapshot.empty) {
+        throw new Error("You have already submitted a review for this book.");
+    }
 
     // Add the new review
-    transaction.set(reviewRef, { ...review, createdAt: serverTimestamp() });
+    const newReviewRef = doc(reviewsCollectionRef);
+    transaction.set(newReviewRef, { ...review, createdAt: serverTimestamp() });
 
     // Update aggregate data on the book
-    const newReviewCount = (bookDoc.data().reviewCount || 0) + 1;
-    const oldRatingTotal = (bookDoc.data().averageRating || 0) * (bookDoc.data().reviewCount || 0);
-    const newAverageRating = (oldRatingTotal + review.rating) / newReviewCount;
+    const currentReviewCount = bookDoc.data().reviewCount || 0;
+    const currentAverageRating = bookDoc.data().averageRating || 0;
+    
+    const newReviewCount = currentReviewCount + 1;
+    const newAverageRating = ((currentAverageRating * currentReviewCount) + review.rating) / newReviewCount;
 
     transaction.update(bookRef, {
       reviewCount: increment(1),
@@ -256,6 +265,7 @@ export const submitReview = async (bookId: string, review: ReviewData) => {
     });
   });
 };
+
 
 export const getReviews = async (bookId: string) => {
   const reviewsCol = collection(db, 'books', bookId, 'reviews');
