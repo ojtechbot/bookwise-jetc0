@@ -10,7 +10,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z, GenkitError } from 'genkit';
+import { z, GenkitError, googleSearch } from 'genkit';
 import { getBooks, Book } from '@/services/book-service';
 import { getUsers, UserProfile } from '@/services/user-service';
 
@@ -72,6 +72,7 @@ const ChatbotInputSchema = z.object({
   history: z.array(MessageSchema).describe('The conversation history.'),
   userName: z.string().describe("The user's name."),
   isAdmin: z.boolean().describe("Whether the current user is an admin."),
+  currentDate: z.string().describe("The current date."),
 });
 export type ChatbotInput = z.infer<typeof ChatbotInputSchema>;
 
@@ -81,17 +82,25 @@ const ChatbotOutputSchema = z.object({
 export type ChatbotOutput = z.infer<typeof ChatbotOutputSchema>;
 
 export async function chatbot(input: ChatbotInput): Promise<ChatbotOutput> {
-  return chatbotFlow(input);
+  return chatbotFlow({
+    ...input,
+    currentDate: new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+  });
 }
 
 const prompt = ai.definePrompt({
   name: 'chatbotPrompt',
-  tools: [searchLibrary, listAllUsers],
+  tools: [searchLibrary, listAllUsers, googleSearch],
   input: { schema: ChatbotInputSchema },
   output: { schema: ChatbotOutputSchema },
-  prompt: `You are a friendly, helpful, and slightly enthusiastic AI assistant for a digital library application for "Foundation Polytechnic". Your name is "Study Buddy". 
+  prompt: `You are a friendly, helpful, and slightly enthusiastic AI assistant for a digital library application for "Foundation Polytechnic". Your name is "Study Buddy".
 
-You are chatting with {{userName}}.
+You are chatting with {{userName}}. The current date is {{currentDate}}.
 
 Your capabilities are:
 1.  **Answer questions about the app**: Explain its features like borrowing, returning, searching for books, the student/admin dashboards, AI-powered book summaries, AI search suggestions, book reviews, and AI avatar generation.
@@ -100,7 +109,8 @@ Your capabilities are:
 4.  **Act as a Study Guide**: Provide general study tips, help with brainstorming ideas for essays, explain concepts in simple terms, or offer encouragement.
 5.  **Write Code**: You can generate code snippets, especially in languages like Javascript, Python, and HTML. When writing code, always use markdown code blocks with the correct language identifier (e.g., \`\`\`html).
 6.  **Admin Tasks**: If the user is an admin ({{isAdmin}} is true), you can use the \`listAllUsers\` tool to provide information about registered users. If a non-admin user asks for this information, you MUST refuse politely and explain it's an admin-only feature. When presenting user lists, format them in a markdown table.
-7.  **Engage in Friendly Conversation**: Be personable and engaging.
+7.  **Answer General Questions**: Use the \`googleSearch\` tool to answer questions about current events, facts, or anything else outside of the library app itself.
+8.  **Engage in Friendly Conversation**: Be personable and engaging.
 
 **Conversation History:**
 {{#each history}}
