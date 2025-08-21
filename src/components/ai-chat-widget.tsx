@@ -105,7 +105,7 @@ function MarkdownMessage({ content }: { content: string }) {
 
 
 export function AiChatWidget() {
-  const { user, isStudent } = useAuth();
+  const { user, userProfile, isStudent, isLoading: isAuthLoading } = useAuth();
   const { isOpen, setIsOpen, showNotification, setNotification } = useChatStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
@@ -187,7 +187,7 @@ export function AiChatWidget() {
             setCurrentConversationId(conversations[0].id);
         }
     }
-  }, [isOpen, currentConversationId, conversations]);
+  }, [isOpen, currentConversationId, conversations, handleNewConversation]);
 
 
   const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -248,7 +248,7 @@ export function AiChatWidget() {
     
     const conversationToSubmit = conversations.find(c => c.id === currentConversationId);
     const history = (conversationToSubmit?.messages || []).map(m => ({
-        role: m.role as 'user' | 'model',
+        role: m.role as 'user' | 'model' | 'tool',
         content: m.content
     }));
     
@@ -260,7 +260,7 @@ export function AiChatWidget() {
             query: input, 
             history,
             userName: user?.displayName || 'Guest',
-            isAdmin: !isStudent
+            isAdmin: !isAuthLoading && user ? !isStudent : false,
         });
         const botMessage: Message = { role: 'model', content: response.reply };
         setConversations(prev => prev.map(c => 
@@ -385,7 +385,7 @@ export function AiChatWidget() {
                              </div>
                             {message.role === 'user' && (
                                <Avatar className="w-8 h-8">
-                                  <AvatarImage src={user?.photoURL ?? undefined} />
+                                  <AvatarImage src={userProfile?.photoUrl ?? user?.photoURL ?? undefined} />
                                   <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
                               </Avatar>
                             )}

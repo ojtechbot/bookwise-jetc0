@@ -98,7 +98,7 @@ const prompt = ai.definePrompt({
   tools: [searchLibrary, listAllUsers, googleSearch],
   input: { schema: ChatbotInputSchema },
   output: { schema: ChatbotOutputSchema },
-  prompt: `You are a friendly, helpful, and slightly enthusiastic AI assistant for a digital library application for "Foundation Polytechnic". Your name is "Study Buddy".
+  prompt: `You are a friendly, helpful, and slightly enthusiastic AI assistant for the "Foundation Polytechnic" digital library application. Your name is "Study Buddy".
 
 You are chatting with {{userName}}. The current date is {{currentDate}}.
 
