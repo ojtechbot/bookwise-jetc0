@@ -135,21 +135,20 @@ const chatbotFlow = ai.defineFlow(
       const llmResponse = await prompt(input);
       const output = llmResponse.output;
 
-      if (output) {
-        return output;
+      if (!output?.reply && llmResponse.toolCalls().length === 0) {
+        throw new Error("LLM returned no reply and no tool calls.");
       }
       
-      // Handle cases where the model uses a tool but doesn't provide text
-      if (llmResponse.toolCalls().length > 0) {
-        return { reply: "I've looked that up for you. Here are the results:" };
-      }
-      
-      // Fallback for other unexpected cases
-      return { reply: "I'm sorry, I'm not sure how to respond to that. Could you try rephrasing?" };
+      return {
+        reply: output?.reply || "I've used my tools to find that information for you. Here are the results:",
+      };
 
     } catch (e: any) {
-        // Log the detailed error and return a user-friendly message
-        console.error(`[Chatbot Flow Error]`, e);
+        console.error(`[Chatbot Flow Error]`, {
+          error: e.message,
+          stack: e.stack,
+          input: JSON.stringify(input, null, 2),
+        });
         
         let errorMessage = 'An unexpected error occurred. Please try again.';
         if (e instanceof GenkitError) {
