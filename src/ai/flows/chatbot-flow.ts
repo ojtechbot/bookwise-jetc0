@@ -81,7 +81,7 @@ const ChatbotOutputSchema = z.object({
 });
 export type ChatbotOutput = z.infer<typeof ChatbotOutputSchema>;
 
-export async function chatbot(input: ChatbotInput): Promise<ChatbotOutput> {
+export async function chatbot(input: Omit<ChatbotInput, 'currentDate'>): Promise<ChatbotOutput> {
   return chatbotFlow({
     ...input,
     currentDate: new Date().toLocaleDateString('en-US', {

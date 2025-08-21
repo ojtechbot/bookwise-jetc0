@@ -148,7 +148,7 @@ export function AiChatWidget() {
     }
   }, [conversations]);
   
-  const handleNewConversation = () => {
+  const handleNewConversation = useCallback(() => {
     const newId = `conv-${Date.now()}`;
     const newConversation: Conversation = {
         id: newId,
@@ -159,7 +159,7 @@ export function AiChatWidget() {
     setCurrentConversationId(newId);
     setInput('');
     setIsMenuOpen(false);
-  };
+  }, []);
   
   const selectConversation = (id: string) => {
     setCurrentConversationId(id);
