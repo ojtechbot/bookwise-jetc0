@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { BookCard } from "@/components/book-card";
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { getBooks, getBook, Book as BookType } from "@/services/book-service";
+import { getBook, Book as BookType } from "@/services/book-service";
 import { useAuth } from '@/context/auth-context';
 import { recommendBooks, type RecommendBooksOutput } from "@/ai/flows/recommend-books-flow";
 import Image from "next/image";
@@ -28,12 +28,13 @@ const categories = [
   { name: 'Technology', icon: Tag },
 ];
 
-const latestBooks = [...initialBooksData]
-    .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds)
-    .slice(0, 8) as unknown as BookType[];
+const allBooks: BookType[] = initialBooksData as unknown as BookType[];
+const latestBooks = [...allBooks]
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    .slice(0, 8);
+
 
 export default function Home() {
-  const [allBooks, setAllBooks] = useState<BookType[]>(() => initialBooksData as unknown as BookType[]);
   const { userProfile } = useAuth();
   const [recommendations, setRecommendations] = useState<RecommendBooksOutput['recommendations']>([]);
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false);
@@ -41,22 +42,7 @@ export default function Home() {
   const autoplayPlugin = useRef(
     Autoplay({ delay: 3000, stopOnInteraction: true })
   );
-
-  useEffect(() => {
-    // This is now just for potential re-fetching, initial data is from import
-    const fetchAllBooks = async () => {
-      try {
-        const all = await getBooks();
-        setAllBooks(all);
-      } catch (error) {
-        console.error("Failed to fetch books:", error);
-      }
-    };
-    if (allBooks.length === 0) { // Only fetch if initial data somehow failed
-        fetchAllBooks();
-    }
-  }, [allBooks]);
-
+  
   const fetchRecommendations = useCallback(async () => {
     if (!userProfile || !userProfile.borrowedBooks || userProfile.borrowedBooks.length === 0 || allBooks.length === 0) {
       return;
@@ -91,18 +77,18 @@ export default function Home() {
     } finally {
       setIsRecommendationsLoading(false);
     }
-  }, [userProfile, allBooks]);
+  }, [userProfile]);
   
   const popularBooks = useMemo(() => {
     // Sort by reviewCount in descending order and take the first 4
     return [...allBooks].sort((a,b) => (b.reviewCount || 0) - (a.reviewCount || 0)).slice(0, 4);
-  }, [allBooks])
+  }, [])
 
   const featuredBook = useMemo(() => {
     if (allBooks.length === 0) return null;
     // Find the book with the highest average rating
     return allBooks.reduce((prev, current) => (prev.averageRating || 0) > (current.averageRating || 0) ? prev : current);
-  }, [allBooks]);
+  }, []);
   
   const recommendedBookDetails = useMemo(() => {
      if(!recommendations.length) return [];
@@ -110,7 +96,7 @@ export default function Home() {
         const book = allBooks.find(b => b.title === rec.title && b.author === rec.author);
         return book ? { ...book, reason: rec.reason } : null;
      }).filter((b): b is BookType & { reason: string } => b !== null);
-  }, [recommendations, allBooks]);
+  }, [recommendations]);
 
 
   return (

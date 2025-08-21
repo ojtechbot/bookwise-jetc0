@@ -103,7 +103,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input placeholder="John Doe" {...field} disabled={isPending}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -117,7 +117,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Registration Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 20240001" {...field} />
+                        <Input placeholder="e.g., 20240001" {...field} disabled={isPending} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -131,7 +131,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>PIN (must be at least 6 characters)</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input type="password" {...field} disabled={isPending}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -144,7 +144,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Confirm PIN</FormLabel>
                       <FormControl>
-                        <Input type="password" {...field} />
+                        <Input type="password" {...field} disabled={isPending}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
