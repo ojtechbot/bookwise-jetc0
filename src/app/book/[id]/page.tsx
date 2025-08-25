@@ -10,11 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
-import { getReviews, type Book, submitReview } from '@/services/book-service';
+import { type Book } from '@/services/book-service';
+import { getReviews, submitReview, type Review } from '@/services/review-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
-import { ReviewList, type Review } from '@/components/review-list';
+import { ReviewList } from '@/components/review-list';
 import { useParams } from 'next/navigation';
 import { useLibraryStore } from '@/store/library-store';
 import allBooksData from '@/data/books.json';
@@ -40,7 +41,7 @@ export default function BookDetailsPage() {
     if (!params.id) return;
     try {
       const reviewsData = await getReviews(params.id);
-      setReviews(reviewsData as Review[]);
+      setReviews(reviewsData);
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
       toast({ title: "Error", description: "Could not load book reviews.", variant: "destructive" });

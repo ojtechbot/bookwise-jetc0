@@ -5,19 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Star, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-
-export interface Review {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  rating: number;
-  comment: string;
-  createdAt: {
-    seconds: number;
-    nanoseconds: number;
-  };
-}
+import { type Review } from '@/services/review-service';
 
 interface ReviewListProps {
   reviews: Review[];
