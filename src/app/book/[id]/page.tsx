@@ -10,51 +10,47 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useState, useTransition, useEffect, useCallback, useMemo } from 'react';
 import { summarizeBook } from '@/ai/flows/summarize-book-flow';
-import { getBook, getReviews, type Book, submitReview } from '@/services/book-service';
+import { getReviews, type Book, submitReview } from '@/services/book-service';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewList, type Review } from '@/components/review-list';
 import { useParams } from 'next/navigation';
 import { useLibraryStore } from '@/store/library-store';
+import allBooksData from '@/data/books.json';
 
 export default function BookDetailsPage() {
   const params = useParams<{ id: string }>();
   const { user, userProfile } = useAuth();
   const [isSummaryPending, startSummaryTransition] = useTransition();
-  const [book, setBook] = useState<Book | null>(null);
   const [aiSummary, setAiSummary] = useState('');
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [isLoadingBook, setIsLoadingBook] = useState(true);
   const { toast } = useToast();
   
   const { borrowedBooks, borrowBook: borrowBookAction, returnBook: returnBookAction } = useLibraryStore();
+  
+  // Find the book directly from the imported JSON data
+  const book: Book | undefined = useMemo(() => {
+    return (allBooksData as unknown as Book[]).find(b => b.id === params.id);
+  }, [params.id]);
+  
   const isBorrowedByUser = useMemo(() => borrowedBooks.includes(params.id), [borrowedBooks, params.id]);
 
-  const fetchBookAndReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async () => {
     if (!params.id) return;
-    setIsLoadingBook(true);
     try {
-      const bookData = await getBook(params.id);
-      setBook(bookData);
-
-      if (bookData) {
-        const reviewsData = await getReviews(params.id);
-        setReviews(reviewsData as Review[]);
-      }
-      
+      const reviewsData = await getReviews(params.id);
+      setReviews(reviewsData as Review[]);
     } catch (error) {
-      console.error("Failed to fetch book or reviews:", error);
-      toast({ title: "Error", description: "Could not load book details.", variant: "destructive" });
-    } finally {
-        setIsLoadingBook(false);
+      console.error("Failed to fetch reviews:", error);
+      toast({ title: "Error", description: "Could not load book reviews.", variant: "destructive" });
     }
   }, [params.id, toast]);
 
 
   useEffect(() => {
-    fetchBookAndReviews();
-  }, [fetchBookAndReviews]);
+    fetchReviews();
+  }, [fetchReviews]);
   
   const handleGenerateSummary = () => {
     if (!book) return;
@@ -94,21 +90,13 @@ export default function BookDetailsPage() {
       });
       toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
       // Refresh reviews and book data to show new average rating
-      await fetchBookAndReviews();
+      await fetchReviews();
       return true;
     } catch (error: any) {
       console.error("Failed to submit review:", error);
       toast({ title: 'Error', description: "Could not submit your review. Please try again.", variant: 'destructive' });
       return false;
     }
-  }
-  
-  if (isLoadingBook) {
-     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-12rem)]">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
   }
   
   if (!book) {
