@@ -4,6 +4,8 @@
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDoc, updateDoc, Timestamp, getDocs, serverTimestamp, writeBatch, query, where } from 'firebase/firestore';
 import defaultStaff from '@/data/staff.json';
+import { type Book, getBook } from './book-service';
+
 
 // This is a client-side only function as it requires client-side Firebase SDKs
 // It dynamically imports admin-only functions to avoid bundling them in the client
@@ -83,6 +85,12 @@ export interface BorrowedBook {
     status: 'borrowed' | 'returned';
 }
 
+export interface BorrowedBookInfo {
+    user: UserProfile;
+    book: Book;
+    borrowed: BorrowedBook;
+}
+
 export interface UserProfile {
     uid: string;
     name: string;
@@ -136,6 +144,30 @@ export const updateUserRole = async (uid: string, role: UserRole) => {
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, { role });
 };
+
+
+// GET ALL BORROWED BOOKS
+export const getAllBorrowedBooks = async (): Promise<BorrowedBookInfo[]> => {
+    const allUsers = await getUsers();
+    const borrowedBookInfos: BorrowedBookInfo[] = [];
+
+    for (const user of allUsers) {
+        if (user.borrowedBooks && user.borrowedBooks.length > 0) {
+            const currentlyBorrowed = user.borrowedBooks.filter(b => b.status === 'borrowed');
+            for (const borrowed of currentlyBorrowed) {
+                const book = await getBook(borrowed.bookId);
+                if (book) {
+                    borrowedBookInfos.push({ user, book, borrowed });
+                }
+            }
+        }
+    }
+    
+    // Sort by most recent borrow date
+    borrowedBookInfos.sort((a, b) => b.borrowed.borrowedDate.seconds - a.borrowed.borrowedDate.seconds);
+    
+    return borrowedBookInfos;
+}
 
 
 // A function to be called from the login page to ensure default staff users exist

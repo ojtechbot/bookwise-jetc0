@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail, ChevronDown } from "lucide-react";
+import { LogIn, UserPlus, Menu, User, LogOut, Moon, Sun, Settings, Info, Mail, ChevronDown, BookOpenCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -128,7 +128,12 @@ export function Header() {
                 <NavLink href="/about">About</NavLink>
                 <NavLink href="/contact">Contact</NavLink>
                 {isLoggedIn && isStudent && <NavLink href="/dashboard">Dashboard</NavLink>}
-                {isLoggedIn && !isStudent && <NavLink href="/admin">Admin</NavLink>}
+                {isLoggedIn && !isStudent && (
+                    <>
+                        <NavLink href="/admin">Admin</NavLink>
+                        <NavLink href="/admin/borrowed">Borrowed Books</NavLink>
+                    </>
+                )}
               </nav>
                <div className="mt-auto p-4">
                   {isLoggedIn && (
@@ -149,7 +154,12 @@ export function Header() {
           <Link href="/about" className="text-foreground/70 hover:text-primary transition-colors">About</Link>
           <Link href="/contact" className="text-foreground/70 hover:text-primary transition-colors">Contact</Link>
           {isLoggedIn && isStudent && <Link href="/dashboard" className="text-foreground/70 hover:text-primary transition-colors">Dashboard</Link>}
-           {isLoggedIn && !isStudent && <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>}
+           {isLoggedIn && !isStudent && (
+            <>
+                <Link href="/admin" className="text-foreground/70 hover:text-primary transition-colors">Admin</Link>
+                <Link href="/admin/borrowed" className="text-foreground/70 hover:text-primary transition-colors">Borrowed</Link>
+            </>
+           )}
         </nav>
         <div className="flex items-center gap-4 ml-auto">
           <ThemeSwitcher />
@@ -191,6 +201,14 @@ export function Header() {
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
+                 {!isStudent && (
+                    <DropdownMenuItem asChild>
+                    <Link href="/admin/borrowed" className="flex items-center cursor-pointer">
+                        <BookOpenCheck className="mr-2 h-4 w-4" />
+                        <span>Borrowed Books</span>
+                    </Link>
+                    </DropdownMenuItem>
+                 )}
                 <DropdownMenuItem onClick={handleLogout} className="flex items-center cursor-pointer">
                    <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
